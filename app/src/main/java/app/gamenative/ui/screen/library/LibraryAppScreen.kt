@@ -453,9 +453,9 @@ internal fun AppScreenContent(
                 // START button - primary action (play/download/pause)
                 KeyEvent.KEYCODE_BUTTON_START -> {
                     if (isDownloading || hasPartialDownload) {
-                        onPauseResumeClick()
+                        if (pauseResumeEnabled) onPauseResumeClick()
                     } else {
-                        onDownloadInstallClick()
+                        if (buttonEnabled) onDownloadInstallClick()
                     }
                     true
                 }

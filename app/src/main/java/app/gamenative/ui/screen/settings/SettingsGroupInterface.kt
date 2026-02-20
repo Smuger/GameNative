@@ -348,7 +348,7 @@ fun SettingsGroupInterface(
     DisposableEffect(Unit) {
         Timber.d("[SettingsGOG]: Setting up GOG auth code event listener")
         val onGOGAuthCodeReceived: (AndroidEvent.GOGAuthCodeReceived) -> Unit = { event ->
-            Timber.i("[SettingsGOG]: ✓ Received GOG auth code event! Code: ${event.authCode.take(20)}...")
+            Timber.i("[SettingsGOG]: ✓ Received GOG auth code event")
 
             coroutineScope.launch {
                 handleGogAuthentication(

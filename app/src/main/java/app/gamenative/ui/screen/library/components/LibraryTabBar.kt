@@ -41,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -462,7 +461,6 @@ private fun ShoulderButton(
                     Modifier
                 },
             )
-            .focusProperties { canFocus = false }
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -545,7 +543,6 @@ private fun IconActionButton(
                     Modifier
                 },
             )
-            .focusProperties { canFocus = false }
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -598,7 +595,6 @@ private fun TabItem(
                     coordinates.size.width.toFloat(),
                 )
             }
-            .focusProperties { canFocus = false }
             .selectable(
                 selected = isSelected,
                 interactionSource = interactionSource,

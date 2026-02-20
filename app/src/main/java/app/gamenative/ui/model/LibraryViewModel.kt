@@ -70,8 +70,8 @@ class LibraryViewModel @Inject constructor(
     }
 
     // How many items loaded on one page of results
-    private var paginationCurrentPage: Int = 0
-    private var lastPageInCurrentFilter: Int = 0
+    @Volatile private var paginationCurrentPage: Int = 0
+    @Volatile private var lastPageInCurrentFilter: Int = 0
 
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
@@ -481,26 +481,27 @@ class LibraryViewModel @Inject constructor(
 
             // Compute effective source filters based on current tab
             // ALL tab uses user preferences, other tabs override with their presets
-            val currentTab = _state.value.currentTab
+            // Use captured currentState (not _state.value) to avoid TOCTOU race
+            val currentTab = currentState.currentTab
             val includeSteam = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
-                _state.value.showSteamInLibrary
+                currentState.showSteamInLibrary
             } else {
                 currentTab.showSteam
             }
             val includeOpen = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
-                _state.value.showCustomGamesInLibrary
+                currentState.showCustomGamesInLibrary
             } else {
                 currentTab.showCustom
             }
 
             val includeGOG = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
-                _state.value.showGOGInLibrary
+                currentState.showGOGInLibrary
             } else {
                 currentTab.showGoG
             }
 
             val includeEpic = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
-                _state.value.showEpicInLibrary
+                currentState.showEpicInLibrary
             } else {
                 currentTab.showEpic
             }

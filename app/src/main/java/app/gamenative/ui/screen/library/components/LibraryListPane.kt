@@ -147,7 +147,7 @@ internal fun LibraryListPane(
                 }
             }
 
-            val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary) {
+            val totalSkeletonCount = remember(state.showSteamInLibrary, state.showCustomGamesInLibrary, state.showGOGInLibrary, state.showEpicInLibrary) {
                 val customCount = if (state.showCustomGamesInLibrary) PrefManager.customGamesCount else 0
                 val steamCount = if (state.showSteamInLibrary) PrefManager.steamGamesCount else 0
                 val gogInstalledCount = if (state.showGOGInLibrary) PrefManager.gogInstalledGamesCount else 0

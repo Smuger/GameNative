@@ -13,8 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
@@ -57,9 +55,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import app.gamenative.ui.component.dialog.GameManagerDialog
+import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
 import app.gamenative.utils.ContainerUtils.getContainer
 import kotlinx.serialization.json.Json
@@ -430,11 +427,11 @@ class SteamAppScreen : BaseAppScreen() {
         var sizeFromStore by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(isInstalled, gameId) {
             if (!isInstalled) {
-                // Load size from store asynchronously to avoid blocking UI
-                withContext(Dispatchers.IO) {
-                    val size = DownloadService.getSizeFromStoreDisplay(gameId)
-                    sizeFromStore = size
+                // Load size from store on IO, assign on Main to respect Compose threading
+                val size = withContext(Dispatchers.IO) {
+                    DownloadService.getSizeFromStoreDisplay(gameId)
                 }
+                sizeFromStore = size
             } else {
                 sizeFromStore = null
             }
@@ -1562,15 +1559,14 @@ class SteamAppScreen : BaseAppScreen() {
             )
         }
 
-        // TODO: GameMigrationDialog not yet available in this branch
-        // if (showMoveDialog) {
-        //     GameMigrationDialog(
-        //         progress = progress,
-        //         currentFile = current,
-        //         movedFiles = moved,
-        //         totalFiles = total,
-        //     )
-        // }
+        if (showMoveDialog) {
+            GameMigrationDialog(
+                progress = progress,
+                currentFile = current,
+                movedFiles = moved,
+                totalFiles = total,
+            )
+        }
 
         if (gameManagerDialogState.visible) {
             GameManagerDialog(

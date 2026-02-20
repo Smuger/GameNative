@@ -353,17 +353,6 @@ fun PluviaMain(
                                             )
                                         }
                                     }
-                                    viewModel.setLaunchedAppId(launchRequest.appId)
-                                    viewModel.setBootToContainer(false)
-                                    preLaunchApp(
-                                        context = context,
-                                        appId = launchRequest.appId,
-                                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                                        setLoadingProgress = viewModel::setLoadingDialogProgress,
-                                        setLoadingMessage = viewModel::setLoadingDialogMessage,
-                                        setMessageDialogState = setMessageDialogState,
-                                        onSuccess = viewModel::launchApp,
-                                    )
                                 }
                             } else if (PluviaApp.xEnvironment == null) {
                                 val targetRoute = viewModel.getPersistedRoute() ?: PluviaScreen.Home.route

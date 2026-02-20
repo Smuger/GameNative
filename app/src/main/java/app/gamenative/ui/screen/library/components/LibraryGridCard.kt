@@ -49,14 +49,11 @@ import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
-import app.gamenative.service.SteamService
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
-import app.gamenative.service.epic.EpicService
-import app.gamenative.service.gog.GOGService
 import java.io.File
 
 /**
@@ -239,16 +236,7 @@ internal fun GridViewCard(
  */
 @Composable
 private fun GridStatusIcons(appInfo: LibraryItem) {
-    val isInstalled by remember(appInfo.appId, appInfo.gameSource) {
-        mutableStateOf(
-            when (appInfo.gameSource) {
-                GameSource.STEAM -> SteamService.isAppInstalled(appInfo.gameId)
-                GameSource.CUSTOM_GAME -> true
-                GameSource.GOG -> GOGService.isGameInstalled(appInfo.gameId.toString())
-                GameSource.EPIC -> EpicService.isGameInstalled(appInfo.gameId)
-            },
-        )
-    }
+    val isInstalled = appInfo.isInstalled
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),

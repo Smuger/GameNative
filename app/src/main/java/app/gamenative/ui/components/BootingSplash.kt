@@ -43,53 +43,7 @@ fun BootingSplash(
     text: String = "Initializing...",
     progress: Float = -1f, // -1 for indeterminate, 0-1 for determinate
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "bootSplash")
-
-    // Logo glow pulse animation
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "glowPulse",
-    )
-
-    // Logo scale breathing effect
-    val logoScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.02f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "logoScale",
-    )
-
-    // Shimmer position for progress bar
-    val shimmerPosition by infiniteTransition.animateFloat(
-        initialValue = -0.3f,
-        targetValue = 1.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "shimmer",
-    )
-
-    // Ambient particle animation
-    val particlePhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(20000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "particlePhase",
-    )
-
-    // Tips rotation
+    // Tips rotation (no animation cost, safe outside visibility check)
     val tips = remember {
         listOf(
             "Booting may take a few minutes on first launch",
@@ -132,6 +86,49 @@ fun BootingSplash(
         enter = fadeIn(animationSpec = tween(durationMillis = 400)),
         exit = fadeOut(animationSpec = tween(durationMillis = 300)),
     ) {
+        // Animations only run while visible (inside AnimatedVisibility scope)
+        val infiniteTransition = rememberInfiniteTransition(label = "bootSplash")
+
+        val glowAlpha by infiniteTransition.animateFloat(
+            initialValue = 0.4f,
+            targetValue = 0.8f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2000, easing = EaseInOutCubic),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "glowPulse",
+        )
+
+        val logoScale by infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.02f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(3000, easing = EaseInOutSine),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "logoScale",
+        )
+
+        val shimmerPosition by infiniteTransition.animateFloat(
+            initialValue = -0.3f,
+            targetValue = 1.3f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1500, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "shimmer",
+        )
+
+        val particlePhase by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(20000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "particlePhase",
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
