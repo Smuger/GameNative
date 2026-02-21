@@ -53,7 +53,15 @@ fun SettingsGroupDebug() {
     // Load Wine debug channels and prepare selection state
     var allWineChannels by remember { mutableStateOf<List<String>>(emptyList()) }
     var showChannelsDialog by remember { mutableStateOf(false) }
-    var selectedWineChannels by remember { mutableStateOf(PrefManager.wineDebugChannels.split(",")) }
+    var selectedWineChannels by remember {
+        mutableStateOf(
+            if (isPreview) {
+                emptyList()
+            } else {
+                PrefManager.wineDebugChannels.split(",")
+            },
+        )
+    }
     LaunchedEffect(Unit) {
         // Read the list of channels from assets
         val json = context.assets.open("wine_debug_channels.json").bufferedReader().use { it.readText() }
@@ -67,7 +75,9 @@ fun SettingsGroupDebug() {
         currentSelection = selectedWineChannels,
         onSave = { newSelection ->
             selectedWineChannels = newSelection
-            PrefManager.wineDebugChannels = newSelection.joinToString(",")
+            if (!isPreview) {
+                PrefManager.wineDebugChannels = newSelection.joinToString(",")
+            }
             showChannelsDialog = false
         },
         onDismiss = { showChannelsDialog = false }
@@ -76,8 +86,18 @@ fun SettingsGroupDebug() {
     /* Crash Log stuff */
     var showLogcatDialog by rememberSaveable { mutableStateOf(false) }
     // states for debug toggles
-    var enableWineDebugPref by rememberSaveable { mutableStateOf(PrefManager.enableWineDebug) }
-    var enableBox86Logs by rememberSaveable { mutableStateOf(WinlatorPrefManager.getBoolean("enable_box86_64_logs", false)) }
+    var enableWineDebugPref by rememberSaveable {
+        mutableStateOf(if (isPreview) false else PrefManager.enableWineDebug)
+    }
+    var enableBox86Logs by rememberSaveable {
+        mutableStateOf(
+            if (isPreview) {
+                false
+            } else {
+                WinlatorPrefManager.getBoolean("enable_box86_64_logs", false)
+            },
+        )
+    }
     var latestCrashFile: File? by rememberSaveable { mutableStateOf(null) }
     LaunchedEffect(Unit) {
         val crashDir = File(context.getExternalFilesDir(null), "crash_logs")
@@ -191,7 +211,9 @@ fun SettingsGroupDebug() {
             subtitle = { Text(text = stringResource(R.string.settings_debug_wine_logs_subtitle)) },
             onCheckedChange = {
                 enableWineDebugPref = it
-                PrefManager.enableWineDebug = it
+                if (!isPreview) {
+                    PrefManager.enableWineDebug = it
+                }
             },
         )
         SettingsSwitch(
@@ -201,7 +223,9 @@ fun SettingsGroupDebug() {
             subtitle = { Text(text = stringResource(R.string.settings_debug_box_logs_subtitle)) },
             onCheckedChange = {
                 enableBox86Logs = it
-                WinlatorPrefManager.putBoolean("enable_box86_64_logs", it)
+                if (!isPreview) {
+                    WinlatorPrefManager.putBoolean("enable_box86_64_logs", it)
+                }
             },
         )
         SettingsMenuLink(

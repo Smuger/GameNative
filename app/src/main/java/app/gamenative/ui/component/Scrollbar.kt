@@ -322,7 +322,7 @@ fun Scrollbar(
                                         .width(6.dp)
                                         .height(1.5.dp)
                                         .clip(RoundedCornerShape(50))
-                                        .background(Color.White.copy(alpha = 0.7f)),
+                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)),
                                 )
                             }
                         }

@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,6 +48,8 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * List view card with compact layout.
@@ -110,8 +113,14 @@ internal fun ListViewCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Game icon
-            val iconUrl = remember(appInfo.appId) {
-                getListIconUrl(context, appInfo)
+            val iconUrl by produceState(
+                initialValue = appInfo.clientIconUrl,
+                key1 = appInfo.appId,
+                key2 = appInfo.clientIconUrl,
+            ) {
+                value = withContext(Dispatchers.IO) {
+                    getListIconUrl(context, appInfo)
+                }
             }
 
             Box(

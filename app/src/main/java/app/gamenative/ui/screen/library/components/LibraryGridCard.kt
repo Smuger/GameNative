@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +56,8 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Grid card for Hero/Capsule layout views.
@@ -140,8 +143,15 @@ internal fun GridViewCard(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Game image
-                val imageUrl = remember(appInfo.appId, paneType, imageRefreshCounter) {
-                    getGridImageUrl(context, appInfo, paneType)
+                val imageUrl by produceState(
+                    initialValue = "",
+                    key1 = appInfo.appId,
+                    key2 = paneType,
+                    key3 = imageRefreshCounter,
+                ) {
+                    value = withContext(Dispatchers.IO) {
+                        getGridImageUrl(context, appInfo, paneType)
+                    }
                 }
 
                 ListItemImage(

@@ -46,6 +46,71 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
 
+private data class OptionItemStyle(
+    val scale: Float,
+    val backgroundColor: Color,
+    val borderColor: Color,
+    val borderWidth: androidx.compose.ui.unit.Dp,
+    val contentColor: Color,
+)
+
+@Composable
+private fun rememberOptionItemStyle(
+    isFocused: Boolean,
+    selected: Boolean,
+    labelPrefix: String,
+): OptionItemStyle {
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.02f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "${labelPrefix}Scale",
+    )
+
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            isFocused && selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+            isFocused -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            else -> Color.Transparent
+        },
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "${labelPrefix}BgColor",
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "${labelPrefix}BorderColor",
+    )
+
+    val borderWidth by animateDpAsState(
+        targetValue = if (isFocused) 2.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "${labelPrefix}BorderWidth",
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = when {
+            isFocused -> MaterialTheme.colorScheme.onSurface
+            selected -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "${labelPrefix}ContentColor",
+    )
+
+    return OptionItemStyle(
+        scale = scale,
+        backgroundColor = backgroundColor,
+        borderColor = borderColor,
+        borderWidth = borderWidth,
+        contentColor = contentColor,
+    )
+}
+
 @Composable
 fun OptionListItem(
     text: String,
@@ -58,57 +123,20 @@ fun OptionListItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "itemScale"
-    )
-
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            isFocused && selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-            isFocused -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-            else -> Color.Transparent
-        },
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "bgColor"
-    )
-
-    val borderColor by animateColorAsState(
-        targetValue = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "borderColor"
-    )
-
-    val borderWidth by animateDpAsState(
-        targetValue = if (isFocused) 2.dp else 0.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "borderWidth"
-    )
-
-    val contentColor by animateColorAsState(
-        targetValue = when {
-            isFocused -> MaterialTheme.colorScheme.onSurface
-            selected -> MaterialTheme.colorScheme.primary
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "contentColor"
+    val style = rememberOptionItemStyle(
+        isFocused = isFocused,
+        selected = selected,
+        labelPrefix = "item",
     )
 
     Box(
         modifier = modifier
-            .scale(scale)
+            .scale(style.scale)
             .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
+            .background(style.backgroundColor)
             .then(
                 if (isFocused) {
-                    Modifier.border(borderWidth, borderColor, RoundedCornerShape(12.dp))
+                    Modifier.border(style.borderWidth, style.borderColor, RoundedCornerShape(12.dp))
                 } else Modifier
             )
             .focusRequester(focusRequester)
@@ -128,7 +156,7 @@ fun OptionListItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = contentColor,
+                    tint = style.contentColor,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(14.dp))
@@ -137,7 +165,7 @@ fun OptionListItem(
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyLarge,
-                color = contentColor,
+                color = style.contentColor,
                 modifier = Modifier.weight(1f)
             )
 
@@ -164,41 +192,10 @@ fun OptionRadioItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "radioScale"
-    )
-
-    val backgroundColor by animateColorAsState(
-        targetValue = when {
-            isFocused && selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-            isFocused -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-            else -> Color.Transparent
-        },
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "radioBgColor"
-    )
-
-    val borderColor by animateColorAsState(
-        targetValue = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "radioBorderColor"
-    )
-
-    val contentColor by animateColorAsState(
-        targetValue = when {
-            isFocused -> MaterialTheme.colorScheme.onSurface
-            selected -> MaterialTheme.colorScheme.primary
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "radioContentColor"
+    val style = rememberOptionItemStyle(
+        isFocused = isFocused,
+        selected = selected,
+        labelPrefix = "radio",
     )
 
     val radioIndicatorColor by animateColorAsState(
@@ -209,12 +206,12 @@ fun OptionRadioItem(
 
     Box(
         modifier = modifier
-            .scale(scale)
+            .scale(style.scale)
             .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
+            .background(style.backgroundColor)
             .then(
                 if (isFocused) {
-                    Modifier.border(2.dp, borderColor, RoundedCornerShape(12.dp))
+                    Modifier.border(style.borderWidth, style.borderColor, RoundedCornerShape(12.dp))
                 } else Modifier
             )
             .focusRequester(focusRequester)
@@ -251,7 +248,7 @@ fun OptionRadioItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = contentColor,
+                    tint = style.contentColor,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -260,7 +257,7 @@ fun OptionRadioItem(
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodyLarge,
-                color = contentColor,
+                color = style.contentColor,
             )
         }
     }
