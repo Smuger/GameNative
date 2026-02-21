@@ -373,6 +373,13 @@ private fun LibraryScreenContent(
                     // Tab bar when not searching
                     LibraryTabBar(
                         currentTab = state.currentTab,
+                        tabCounts = mapOf(
+                            LibraryTab.ALL to state.allCount,
+                            LibraryTab.STEAM to state.steamCount,
+                            LibraryTab.GOG to state.gogCount,
+                            LibraryTab.EPIC to state.epicCount,
+                            LibraryTab.LOCAL to state.localCount,
+                        ),
                         onTabSelected = onTabChanged,
                         onPreviousTab = { onTabChanged(state.currentTab.previous()) },
                         onNextTab = { onTabChanged(state.currentTab.next()) },

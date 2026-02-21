@@ -66,6 +66,7 @@ import app.gamenative.ui.util.rememberWindowWidthClass
 @Composable
 fun LibraryTabBar(
     currentTab: LibraryTab,
+    tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
@@ -80,6 +81,7 @@ fun LibraryTabBar(
     when (widthClass) {
         WindowWidthClass.COMPACT -> CompactLibraryTabBar(
             currentTab = currentTab,
+            tabCounts = tabCounts,
             onTabSelected = onTabSelected,
             onOptionsClick = onOptionsClick,
             onSearchClick = onSearchClick,
@@ -90,6 +92,7 @@ fun LibraryTabBar(
 
         else -> ExpandedLibraryTabBar(
             currentTab = currentTab,
+            tabCounts = tabCounts,
             onTabSelected = onTabSelected,
             onPreviousTab = onPreviousTab,
             onNextTab = onNextTab,
@@ -109,6 +112,7 @@ fun LibraryTabBar(
 @Composable
 private fun CompactLibraryTabBar(
     currentTab: LibraryTab,
+    tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
     onSearchClick: () -> Unit,
@@ -176,8 +180,14 @@ private fun CompactLibraryTabBar(
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
+                        val count = tabCounts[tab]
+                        val label = if (count != null && count > 0) {
+                            "${stringResource(tab.labelResId)} ($count)"
+                        } else {
+                            stringResource(tab.labelResId)
+                        }
                         Text(
-                            text = stringResource(tab.labelResId),
+                            text = label,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             color = if (isSelected) {
@@ -248,6 +258,7 @@ private fun CompactIconButton(
 @Composable
 private fun ExpandedLibraryTabBar(
     currentTab: LibraryTab,
+    tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
@@ -363,6 +374,7 @@ private fun ExpandedLibraryTabBar(
                     tabs.forEachIndexed { index, tab ->
                         TabItem(
                             tab = tab,
+                            count = tabCounts[tab],
                             isSelected = tab == currentTab,
                             onClick = { onTabSelected(tab) },
                             onPositioned = { position, width ->
@@ -568,6 +580,7 @@ private fun IconActionButton(
 @Composable
 private fun TabItem(
     tab: LibraryTab,
+    count: Int?,
     isSelected: Boolean,
     onClick: () -> Unit,
     onPositioned: (Float, Float) -> Unit,
@@ -585,6 +598,12 @@ private fun TabItem(
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "textAlpha",
     )
+
+    val label = if (count != null && count > 0) {
+        "${stringResource(tab.labelResId)} ($count)"
+    } else {
+        stringResource(tab.labelResId)
+    }
 
     Box(
         modifier = modifier
@@ -605,7 +624,7 @@ private fun TabItem(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = stringResource(tab.labelResId),
+            text = label,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
             color = when {
@@ -628,6 +647,13 @@ private fun Preview_LibraryTabBar() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.ALL,
+                tabCounts = mapOf(
+                    LibraryTab.ALL to 42,
+                    LibraryTab.STEAM to 30,
+                    LibraryTab.GOG to 8,
+                    LibraryTab.EPIC to 4,
+                    LibraryTab.LOCAL to 3,
+                ),
                 onTabSelected = {},
                 onPreviousTab = {},
                 onNextTab = {},
@@ -651,6 +677,13 @@ private fun Preview_LibraryTabBar_Steam() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.STEAM,
+                tabCounts = mapOf(
+                    LibraryTab.ALL to 42,
+                    LibraryTab.STEAM to 30,
+                    LibraryTab.GOG to 8,
+                    LibraryTab.EPIC to 4,
+                    LibraryTab.LOCAL to 3,
+                ),
                 onTabSelected = {},
                 onPreviousTab = {},
                 onNextTab = {},

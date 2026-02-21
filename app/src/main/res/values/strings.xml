@@ -93,7 +93,7 @@
     <string name="tab_gog">GoG</string>
     <string name="tab_epic">Epic</string>
     <string name="tab_installed">Installed</string>
-    <string name="tab_local">Local</string>
+    <string name="tab_local">Custom</string>
 
     <!-- Custom Games -->
     <string name="custom_games_title">Custom Games</string>

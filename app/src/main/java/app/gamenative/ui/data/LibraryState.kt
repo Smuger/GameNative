@@ -47,4 +47,11 @@ data class LibraryState(
 
     // Current library tab for quick filter access
     val currentTab: LibraryTab = LibraryTab.ALL,
+
+    // Per-source game counts for tab badges
+    val allCount: Int = 0,
+    val steamCount: Int = 0,
+    val gogCount: Int = 0,
+    val epicCount: Int = 0,
+    val localCount: Int = 0,
 )

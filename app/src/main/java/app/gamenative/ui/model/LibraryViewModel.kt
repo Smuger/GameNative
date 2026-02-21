@@ -564,6 +564,12 @@ class LibraryViewModel @Inject constructor(
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
                     isLoading = false, // Loading complete
+                    // Per-source counts for tab badges (pre-source-filter totals)
+                    allCount = steamEntries.size + customEntries.size + gogEntries.size + epicEntries.size,
+                    steamCount = steamEntries.size,
+                    gogCount = gogEntries.size,
+                    epicCount = epicEntries.size,
+                    localCount = customEntries.size,
                 )
             }
         }

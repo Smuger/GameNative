@@ -27,13 +27,21 @@ enum class LibraryTab(
         showEpic = false,
         installedOnly = false,
     ),
-    INSTALLED(
-        labelResId = R.string.tab_installed,
-        showCustom = true,
-        showSteam = true,
+    GOG(
+        labelResId = R.string.tab_gog,
+        showCustom = false,
+        showSteam = false,
         showGoG = true,
+        showEpic = false,
+        installedOnly = false,
+    ),
+    EPIC(
+        labelResId = R.string.tab_epic,
+        showCustom = false,
+        showSteam = false,
+        showGoG = false,
         showEpic = true,
-        installedOnly = true,
+        installedOnly = false,
     ),
     LOCAL(
         labelResId = R.string.tab_local,
