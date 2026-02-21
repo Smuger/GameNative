@@ -70,8 +70,8 @@ class LibraryViewModel @Inject constructor(
     }
 
     // How many items loaded on one page of results
-    private var paginationCurrentPage: Int = 0
-    private var lastPageInCurrentFilter: Int = 0
+    @Volatile private var paginationCurrentPage: Int = 0
+    @Volatile private var lastPageInCurrentFilter: Int = 0
 
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()

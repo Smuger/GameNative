@@ -188,7 +188,7 @@ private fun SettingsHeader(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
                 ),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = stringResource(R.string.settings_subtitle),

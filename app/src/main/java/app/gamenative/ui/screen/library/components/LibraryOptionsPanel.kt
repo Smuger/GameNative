@@ -98,7 +98,7 @@ fun LibraryOptionsPanel(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.6f))
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,

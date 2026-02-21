@@ -269,13 +269,9 @@ private fun UserLoginScreenContent(
                             )
 
                             // Tab selection between Credentials and QR Code
-                            var selectedTabIndex by remember {
-                                mutableIntStateOf(
-                                    when (userLoginState.loginScreen) {
-                                        LoginScreen.QR -> 1
-                                        else -> 0
-                                    },
-                                )
+                            val selectedTabIndex = when (userLoginState.loginScreen) {
+                                LoginScreen.QR -> 1
+                                else -> 0
                             }
 
                             TabRow(
@@ -298,7 +294,6 @@ private fun UserLoginScreenContent(
                                 Tab(
                                     selected = selectedTabIndex == 0,
                                     onClick = {
-                                        selectedTabIndex = 0
                                         onShowLoginScreen(LoginScreen.CREDENTIAL)
                                     },
                                     text = {
@@ -315,7 +310,6 @@ private fun UserLoginScreenContent(
                                 Tab(
                                     selected = selectedTabIndex == 1,
                                     onClick = {
-                                        selectedTabIndex = 1
                                         onShowLoginScreen(LoginScreen.QR)
                                     },
                                     text = {

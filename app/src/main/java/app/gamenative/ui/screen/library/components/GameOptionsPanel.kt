@@ -104,7 +104,7 @@ fun GameOptionsPanel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
                 .selectable(
                     selected = false,
                     interactionSource = remember { MutableInteractionSource() },
