@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -23,8 +24,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -68,8 +67,6 @@ fun LibraryTabBar(
     currentTab: LibraryTab,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
-    onPreviousTab: () -> Unit,
-    onNextTab: () -> Unit,
     onOptionsClick: () -> Unit,
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
@@ -94,8 +91,6 @@ fun LibraryTabBar(
             currentTab = currentTab,
             tabCounts = tabCounts,
             onTabSelected = onTabSelected,
-            onPreviousTab = onPreviousTab,
-            onNextTab = onNextTab,
             onOptionsClick = onOptionsClick,
             onSearchClick = onSearchClick,
             onAddGameClick = onAddGameClick,
@@ -137,7 +132,9 @@ private fun CompactLibraryTabBar(
             .padding(top = 8.dp, bottom = 12.dp, start = 8.dp, end = 8.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusGroup(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -161,19 +158,32 @@ private fun CompactLibraryTabBar(
             ) {
                 tabs.forEach { tab ->
                     val isSelected = tab == currentTab
+                    val tabInteractionSource = remember { MutableInteractionSource() }
+                    val isTabFocused by tabInteractionSource.collectIsFocusedAsState()
                     Box(
                         modifier = Modifier
+                            .then(
+                                if (isTabFocused && !isSelected) {
+                                    Modifier.border(
+                                        2.dp,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                        RoundedCornerShape(16.dp),
+                                    )
+                                } else {
+                                    Modifier
+                                },
+                            )
                             .clip(RoundedCornerShape(16.dp))
                             .background(
-                                if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    Color.Transparent
+                                when {
+                                    isSelected -> MaterialTheme.colorScheme.primary
+                                    isTabFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                    else -> Color.Transparent
                                 },
                             )
                             .selectable(
                                 selected = isSelected,
-                                interactionSource = remember { MutableInteractionSource() },
+                                interactionSource = tabInteractionSource,
                                 indication = null,
                                 onClick = { onTabSelected(tab) },
                             )
@@ -190,10 +200,10 @@ private fun CompactLibraryTabBar(
                             text = label,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            color = when {
+                                isSelected -> MaterialTheme.colorScheme.onPrimary
+                                isTabFocused -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             },
                         )
                     }
@@ -230,14 +240,34 @@ private fun CompactIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
     Box(
         modifier = modifier
             .size(36.dp)
+            .then(
+                if (isFocused) {
+                    Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        CircleShape,
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(
+                if (isFocused) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                },
+            )
             .selectable(
                 selected = false,
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
             ),
@@ -246,7 +276,11 @@ private fun CompactIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            tint = if (isFocused) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+            },
             modifier = Modifier.size(20.dp),
         )
     }
@@ -260,8 +294,6 @@ private fun ExpandedLibraryTabBar(
     currentTab: LibraryTab,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
-    onPreviousTab: () -> Unit,
-    onNextTab: () -> Unit,
     onOptionsClick: () -> Unit,
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
@@ -313,7 +345,8 @@ private fun ExpandedLibraryTabBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 12.dp)
+                .focusGroup(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -322,13 +355,6 @@ private fun ExpandedLibraryTabBar(
                 icon = Icons.Default.Tune,
                 contentDescription = stringResource(R.string.options),
                 onClick = onOptionsClick,
-            )
-
-            // L1 button (previous tab)
-            ShoulderButton(
-                label = "L1",
-                onClick = onPreviousTab,
-                isLeft = true,
             )
 
             // Tab container with sliding indicator
@@ -386,13 +412,6 @@ private fun ExpandedLibraryTabBar(
                 }
             }
 
-            // R1 button (next tab)
-            ShoulderButton(
-                label = "R1",
-                onClick = onNextTab,
-                isLeft = false,
-            )
-
             // Search button
             IconActionButton(
                 icon = Icons.Default.Search,
@@ -414,88 +433,6 @@ private fun ExpandedLibraryTabBar(
                 onClick = onMenuClick,
             )
         }
-    }
-}
-
-@Composable
-private fun ShoulderButton(
-    label: String,
-    onClick: () -> Unit,
-    isLeft: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.15f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "shoulderButtonScale",
-    )
-
-    val alpha by animateFloatAsState(
-        targetValue = if (isFocused) 1f else 0.7f,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "shoulderButtonAlpha",
-    )
-
-    Box(
-        modifier = modifier
-            .scale(scale)
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(
-                brush = Brush.radialGradient(
-                    colors = if (isFocused) {
-                        listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        )
-                    } else {
-                        listOf(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-                        )
-                    },
-                ),
-            )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                        CircleShape,
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .selectable(
-                selected = isFocused,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-            .alpha(alpha),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = if (isLeft) {
-                Icons.AutoMirrored.Filled.KeyboardArrowLeft
-            } else {
-                Icons.AutoMirrored.Filled.KeyboardArrowRight
-            },
-            contentDescription = label,
-            tint = if (isFocused) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-            },
-            modifier = Modifier.size(24.dp),
-        )
     }
 }
 
@@ -528,6 +465,17 @@ private fun IconActionButton(
         modifier = modifier
             .scale(scale)
             .size(44.dp)
+            .then(
+                if (isFocused) {
+                    Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        CircleShape,
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .clip(CircleShape)
             .background(
                 brush = Brush.radialGradient(
@@ -543,17 +491,6 @@ private fun IconActionButton(
                         )
                     },
                 ),
-            )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                        CircleShape,
-                    )
-                } else {
-                    Modifier
-                },
             )
             .selectable(
                 selected = isFocused,
@@ -607,6 +544,17 @@ private fun TabItem(
 
     Box(
         modifier = modifier
+            .then(
+                if (isFocused && !isSelected) {
+                    Modifier.border(
+                        2.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        RoundedCornerShape(20.dp),
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .clip(RoundedCornerShape(20.dp))
             .onGloballyPositioned { coordinates ->
                 onPositioned(
@@ -655,8 +603,6 @@ private fun Preview_LibraryTabBar() {
                     LibraryTab.LOCAL to 3,
                 ),
                 onTabSelected = {},
-                onPreviousTab = {},
-                onNextTab = {},
                 onOptionsClick = {},
                 onSearchClick = {},
                 onAddGameClick = {},
@@ -685,8 +631,6 @@ private fun Preview_LibraryTabBar_Steam() {
                     LibraryTab.LOCAL to 3,
                 ),
                 onTabSelected = {},
-                onPreviousTab = {},
-                onNextTab = {},
                 onOptionsClick = {},
                 onSearchClick = {},
                 onAddGameClick = {},

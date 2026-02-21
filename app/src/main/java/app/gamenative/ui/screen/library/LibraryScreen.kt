@@ -37,7 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.focusable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -154,9 +154,6 @@ private fun LibraryScreenContent(
         }
     }
 
-    // FocusRequester for the root container to ensure gamepad key events are always dispatched.
-    // Without this, switching to a tab with no items (e.g. LOCAL with no custom games) loses
-    // focus from the tree entirely, and L1/R1 bumper events stop arriving.
     val rootFocusRequester = remember { FocusRequester() }
 
     var isSystemMenuOpen by remember { mutableStateOf(false) }
@@ -205,6 +202,15 @@ private fun LibraryScreenContent(
         }
     }
 
+    // Catch-all: when on root library view with nothing open, back/B opens system menu
+    // instead of exiting the app. Declared first = lowest priority.
+    BackHandler(
+        enabled = selectedAppId == null && selectedLibraryItem == null &&
+            !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching,
+    ) {
+        isSystemMenuOpen = true
+    }
+
     BackHandler(enabled = isSystemMenuOpen) {
         isSystemMenuOpen = false
     }
@@ -248,13 +254,17 @@ private fun LibraryScreenContent(
         Modifier
     }
 
-    // Recapture focus on the root container when the tab changes or the list becomes empty,
-    // so bumper key events keep working even when there are no focusable grid items.
-    LaunchedEffect(state.currentTab, state.appInfoList.isEmpty()) {
-        try {
-            rootFocusRequester.requestFocus()
-        } catch (_: IllegalStateException) {
-            // FocusRequester not yet attached during initial composition
+    // Recapture focus on the root container when the list becomes empty (e.g. switching to
+    // an empty tab), so bumper key events keep working even when there are no grid items.
+    // NOTE: Do NOT trigger on state.currentTab — that steals focus from whichever tab bar
+    // button the user just navigated to and causes the "flash" / "reset to hamburger" bug.
+    LaunchedEffect(state.appInfoList.isEmpty()) {
+        if (state.appInfoList.isEmpty()) {
+            try {
+                rootFocusRequester.requestFocus()
+            } catch (_: IllegalStateException) {
+                // FocusRequester not yet attached during initial composition
+            }
         }
     }
 
@@ -264,7 +274,7 @@ private fun LibraryScreenContent(
             .background(MaterialTheme.colorScheme.background)
             .then(safePaddingModifier)
             .focusRequester(rootFocusRequester)
-            .focusable()
+            .focusGroup()
             .onPreviewKeyEvent { keyEvent ->
                 // TODO: consider abstracting this
                 // Handle gamepad buttons
@@ -332,6 +342,28 @@ private fun LibraryScreenContent(
                             }
                         }
 
+                        // B button - contextual back / open system menu
+                        KeyEvent.KEYCODE_BUTTON_B -> {
+                            if (selectedAppId != null) {
+                                // Let LibraryAppScreen handle its own B-button
+                                false
+                            } else if (isSystemMenuOpen) {
+                                isSystemMenuOpen = false
+                                true
+                            } else if (state.isOptionsPanelOpen) {
+                                onOptionsPanelToggle(false)
+                                true
+                            } else if (state.isSearching) {
+                                onIsSearching(false)
+                                onSearchQuery("")
+                                true
+                            } else {
+                                // Root library view: open system menu
+                                isSystemMenuOpen = true
+                                true
+                            }
+                        }
+
                         else -> false
                     }
                 } else {
@@ -381,8 +413,6 @@ private fun LibraryScreenContent(
                             LibraryTab.LOCAL to state.localCount,
                         ),
                         onTabSelected = onTabChanged,
-                        onPreviousTab = { onTabChanged(state.currentTab.previous()) },
-                        onNextTab = { onTabChanged(state.currentTab.next()) },
                         onOptionsClick = { onOptionsPanelToggle(true) },
                         onSearchClick = { onIsSearching(true) },
                         onAddGameClick = onAddCustomGameClick,
@@ -438,6 +468,11 @@ private fun LibraryScreenContent(
                     GamepadAction(
                         button = GamepadButton.START,
                         labelResId = R.string.action_system,
+                        onClick = { isSystemMenuOpen = true },
+                    ),
+                    GamepadAction(
+                        button = GamepadButton.B,
+                        labelResId = R.string.menu,
                         onClick = { isSystemMenuOpen = true },
                     ),
                     GamepadAction(
