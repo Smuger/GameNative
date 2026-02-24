@@ -9,8 +9,8 @@ data class UserLoginState(
     val rememberSession: Boolean = false,
     val twoFactorCode: String = "",
 
-    val isLoggingIn: Boolean = false,
     val isSteamConnected: Boolean = false,
+    val isLoggingIn: Boolean = false,
 
     val loginResult: LoginResult = LoginResult.Failed,
     val loginScreen: LoginScreen = LoginScreen.CREDENTIAL,
