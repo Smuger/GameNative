@@ -1,7 +1,9 @@
 package app.gamenative.ui.screen.library.components
 
 import android.view.KeyEvent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -56,6 +58,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalConfiguration
@@ -339,9 +342,27 @@ internal fun LibraryCarouselPane(
                             Box(
                                 modifier = Modifier
                                     .zIndex(zOrder)
-                                .width(cardWidth)
-                                .height(cardHeight)
-                                .graphicsLayer {
+                                    .width(cardWidth)
+                                    .height(cardHeight)
+                                    .then(
+                                        if (isCentered) {
+                                            Modifier.border(
+                                                BorderStroke(
+                                                    3.dp,
+                                                    Brush.verticalGradient(
+                                                        colors = listOf(
+                                                            MaterialTheme.colorScheme.primary,
+                                                            MaterialTheme.colorScheme.tertiary,
+                                                        ),
+                                                    ),
+                                                ),
+                                                RoundedCornerShape(12.dp),
+                                            )
+                                        } else {
+                                            Modifier
+                                        }
+                                    )
+                                    .graphicsLayer {
                                         scaleX = scale
                                         scaleY = scale
                                         this.alpha = appItemAlpha
