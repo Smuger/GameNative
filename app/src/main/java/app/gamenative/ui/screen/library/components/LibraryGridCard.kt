@@ -241,16 +241,15 @@ internal fun GridViewCard(
                     GridStatusIcons(appInfo = appInfo)
                 }
 
-                // Compatibility badge (top left)
+                // Compatibility badge (top left, including UNKNOWN)
                 compatibilityStatus?.let { status ->
-                    if (status != GameCompatibilityStatus.UNKNOWN) {
-                        CompatibilityBadge(
-                            status = status,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(8.dp),
-                        )
-                    }
+                    CompatibilityBadge(
+                        status = status,
+                        showLabel = true,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp),
+                    )
                 }
 
                 // Game source icon (top right)
