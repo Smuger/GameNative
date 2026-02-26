@@ -14,6 +14,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +33,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
@@ -40,6 +43,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +67,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -85,7 +91,6 @@ import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LoadingScreen
-import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -104,6 +109,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -182,7 +188,16 @@ private fun PrimaryActionButton(
             )
             .then(
                 if (isFocused) {
-                    Modifier.border(2.dp, Color.White, RoundedCornerShape(8.dp))
+                    Modifier.border(
+                        2.dp,
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary,
+                            ),
+                        ),
+                        RoundedCornerShape(8.dp),
+                    )
                 } else {
                     Modifier
                 },
@@ -281,7 +296,16 @@ private fun ActionIconButton(
             )
             .then(
                 if (isFocused) {
-                    Modifier.border(2.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    Modifier.border(
+                        2.dp,
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary,
+                            ),
+                        ),
+                        RoundedCornerShape(8.dp),
+                    )
                 } else {
                     Modifier
                 },
@@ -313,9 +337,43 @@ private fun InfoCard(
     modifier: Modifier = Modifier,
     statusColor: Color? = null,
     isCompact: Boolean = false,
+    focusableForNavigation: Boolean = false,
 ) {
+    var isFocused by remember { mutableStateOf(false) }
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+    val cardModifier = if (focusableForNavigation) {
+        modifier
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .onFocusChanged { state ->
+                isFocused = state.isFocused
+                if (state.isFocused) {
+                    scope.launch { bringIntoViewRequester.bringIntoView() }
+                }
+            }
+            .focusable()
+            .then(
+                if (isFocused) {
+                    Modifier.border(
+                        2.dp,
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary,
+                            ),
+                        ),
+                        RoundedCornerShape(16.dp),
+                    )
+                } else {
+                    Modifier
+                },
+            )
+    } else {
+        modifier
+    }
+
     Surface(
-        modifier = modifier,
+        modifier = cardModifier,
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shadowElevation = 2.dp,
@@ -621,18 +679,12 @@ internal fun AppScreenContent(
                 )
 
                 // Back button (top left)
-                Box(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .size(44.dp)
-                        .background(
-                            color = Color.Black.copy(alpha = 0.4f),
-                            shape = RoundedCornerShape(8.dp),
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    BackButton(onClick = onBack)
-                }
+                ActionIconButton(
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back),
+                    onClick = onBack,
+                    modifier = Modifier.padding(16.dp),
+                )
 
                 // Bottom overlay with title and action bar
                 Column(
@@ -858,6 +910,7 @@ internal fun AppScreenContent(
                         statusColor = statusColor,
                         isCompact = true,
                         modifier = Modifier.weight(1f),
+                        focusableForNavigation = true,
                     )
                     InfoCard(
                         label = stringResource(R.string.size),
@@ -868,6 +921,7 @@ internal fun AppScreenContent(
                         },
                         isCompact = true,
                         modifier = Modifier.weight(1f),
+                        focusableForNavigation = true,
                     )
                 }
 
@@ -882,6 +936,7 @@ internal fun AppScreenContent(
                         value = displayInfo.developer,
                         isCompact = true,
                         modifier = Modifier.weight(1f),
+                        focusableForNavigation = true,
                     )
                     InfoCard(
                         label = stringResource(R.string.release_date),
@@ -895,6 +950,7 @@ internal fun AppScreenContent(
                         },
                         isCompact = true,
                         modifier = Modifier.weight(1f),
+                        focusableForNavigation = true,
                     )
                 }
 
@@ -906,6 +962,7 @@ internal fun AppScreenContent(
                         value = displayInfo.installLocation,
                         isCompact = true,
                         modifier = Modifier.fillMaxWidth(),
+                        focusableForNavigation = true,
                     )
                 }
 
@@ -922,6 +979,7 @@ internal fun AppScreenContent(
                                 value = displayInfo.playtimeText,
                                 isCompact = true,
                                 modifier = Modifier.weight(1f),
+                                focusableForNavigation = true,
                             )
                         }
                         if (displayInfo.lastPlayedText != null) {
@@ -930,6 +988,7 @@ internal fun AppScreenContent(
                                 value = displayInfo.lastPlayedText,
                                 isCompact = true,
                                 modifier = Modifier.weight(1f),
+                                focusableForNavigation = true,
                             )
                         }
                     }
