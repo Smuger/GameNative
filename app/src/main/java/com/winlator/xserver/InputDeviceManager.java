@@ -197,9 +197,22 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         }
     }
 
+    private Window getFocusedWindowOrFallback() {
+        Window focused = xServer.windowManager.getFocusedWindow();
+        if (focused != null) return focused;
+        // Wine hasn't sent SET_INPUT_FOCUS yet (startup race or focus loss).
+        // Fall back to the first mapped top-level InputOutput window, which is
+        // the virtual-desktop window owned by explorer.exe.  Our wineserver patch
+        // in find_hardware_message_window will then route the key to the game.
+        for (Window child : xServer.windowManager.rootWindow.getChildren()) {
+            if (child.attributes.isMapped() && child.isInputOutput()) return child;
+        }
+        return null;
+    }
+
     @Override
     public void onKeyPress(byte keycode, int keysym) {
-        Window focusedWindow = xServer.windowManager.getFocusedWindow();
+        Window focusedWindow = getFocusedWindowOrFallback();
         if (focusedWindow == null) return;
         updatePointWindow();
 
