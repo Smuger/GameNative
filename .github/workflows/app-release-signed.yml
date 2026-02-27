@@ -44,13 +44,51 @@ jobs:
           SUPABASE_KEY=dummy
           EOF
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
-
-      - name: Rename APK
+      - name: Install Android SDK Build Tools
         run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          yes | "$SDKMANAGER" --install "build-tools;34.0.0"
+
+      - name: Build AAB
+        run: ./gradlew :app:bundleDebug
+
+      - name: Extract universal APK from bundle
+        run: |
+          java -jar tools/bundletool-all-1.17.2.jar build-apks \
+            --bundle=app/build/outputs/bundle/debug/app-debug.aab \
+            --output=app-debug.apks \
+            --mode=universal
+
+          unzip -o app-debug.apks universal.apk
+
+      - name: Sign with debug keystore
+        run: |
+          BUILD_TOOLS_DIR="${ANDROID_HOME}/build-tools/34.0.0"
+          if [ ! -d "$BUILD_TOOLS_DIR" ]; then
+            BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
+          fi
+
+          DEBUGKS="$HOME/.android/debug.keystore"
+          if [ ! -f "$DEBUGKS" ]; then
+            mkdir -p "$HOME/.android"
+            keytool -genkey -v -keystore "$DEBUGKS" -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US" \
+              -storepass android -keypass android -noprompt
+          fi
+
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          mv app/build/outputs/apk/debug/app-debug.apk gamenative-test-${SHORT_SHA}.apk
+          "${BUILD_TOOLS_DIR}/apksigner" sign \
+            --ks "$DEBUGKS" \
+            --ks-key-alias androiddebugkey \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out gamenative-test-${SHORT_SHA}.apk \
+            universal.apk
+
           echo "APK_NAME=gamenative-test-${SHORT_SHA}.apk" >> $GITHUB_ENV
 
       - name: Create release
