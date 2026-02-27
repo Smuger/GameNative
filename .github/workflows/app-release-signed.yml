@@ -10,11 +10,6 @@ on:
       - 'media/**'
       - '.github/ISSUE_TEMPLATE/**'
   workflow_dispatch:
-    inputs:
-      ref:
-        description: 'Branch, tag, or commit SHA to build'
-        required: false
-        default: 'master'
 
 jobs:
   build:
