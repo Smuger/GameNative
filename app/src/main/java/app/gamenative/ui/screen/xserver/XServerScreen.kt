@@ -547,6 +547,13 @@ fun XServerScreen(
                             showPhysicalControllerDialog = true
                         }
 
+                        NavigationDialog.ACTION_FOCUS_DEBUG -> {
+                            val xServer = xServerView?.getxServer()
+                            if (xServer != null) {
+                                com.winlator.contentdialog.WindowFocusDebugDialog(context, xServer).show()
+                            }
+                        }
+
                         NavigationDialog.ACTION_EXIT_GAME -> {
                             if (currentAppInfo != null) {
                                 PostHog.capture(

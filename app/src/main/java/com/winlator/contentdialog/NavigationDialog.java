@@ -29,6 +29,7 @@ public class NavigationDialog extends ContentDialog {
     public static final int ACTION_EXIT_GAME = 3;
     public static final int ACTION_EDIT_CONTROLS = 4;
     public static final int ACTION_EDIT_PHYSICAL_CONTROLLER = 5;
+    public static final int ACTION_FOCUS_DEBUG = 6;
 
     public interface NavigationListener {
         void onNavigationItemSelected(int itemId);
@@ -62,6 +63,7 @@ public class NavigationDialog extends ContentDialog {
         if (hasPhysicalController) {
             addMenuItem(context, grid, R.drawable.icon_gamepad, R.string.edit_physical_controller, ACTION_EDIT_PHYSICAL_CONTROLLER, listener, 1.0f);
         }
+        addMenuItem(context, grid, R.drawable.icon_debug, R.string.window_focus_debug, ACTION_FOCUS_DEBUG, listener, 1.0f);
         addMenuItem(context, grid, R.drawable.icon_exit, R.string.exit_game, ACTION_EXIT_GAME, listener, 1.0f);
     }
 

@@ -179,6 +179,7 @@
     <string name="task_manager">Task Manager</string>
     <string name="magnifier">Magnifier</string>
     <string name="logs">Logs</string>
+    <string name="window_focus_debug">Focus Debug</string>
     <string name="exit_game">Exit</string>
     <string name="exit">Exit Game</string>
     <string name="keyboard">Keyboard</string>
