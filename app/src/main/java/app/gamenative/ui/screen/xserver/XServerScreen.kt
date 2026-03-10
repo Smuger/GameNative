@@ -3158,6 +3158,26 @@ private fun applyGeneralPatches(
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
     }
     containerManager.extractContainerPatternFile(container.getWineVersion(), contentsManager, container.rootDir, null)
+
+    // Custom Wine/Proton builds use their own prefixPack which doesn't include
+    // GameNative-specific executables. Extract them from the bundled container pattern.
+    val windowsDir = File(container.rootDir, ".wine/drive_c/windows")
+    val gameNativeExes = setOf("winhandler.exe", "wfm.exe")
+    if (gameNativeExes.any { !File(windowsDir, it).exists() }) {
+        Timber.i("GameNative executables missing from container, extracting from container_pattern_gamenative.tzst")
+        TarCompressorUtils.extract(
+            TarCompressorUtils.Type.ZSTD,
+            context.assets,
+            "container_pattern_gamenative.tzst",
+            container.rootDir,
+            object : OnExtractFileListener {
+                override fun onExtractFile(file: File, size: Long): File? {
+                    return if (file.name in gameNativeExes) file else null
+                }
+            },
+        )
+    }
+    
     WineUtils.applySystemTweaks(context, wineInfo)
     container.putExtra("graphicsDriver", null)
     container.putExtra("desktopTheme", null)
