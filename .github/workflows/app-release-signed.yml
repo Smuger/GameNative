@@ -37,7 +37,8 @@ jobs:
         KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
       run: |
         mkdir -p app/keystores
-        echo "$KEYSTORE" | base64 --decode > app/keystores/keystore
+        printf '%s' "$KEYSTORE" | base64 --decode > app/keystores/keystore
+        file app/keystores/keystore
         echo "storeFile=keystores/keystore" >> app/keystores/keystore.properties
         echo "keyAlias=$KEYSTORE_KEY_ALIAS" >> app/keystores/keystore.properties
         echo "storePassword=$KEYSTORE_STORE_PASSWORD" >> app/keystores/keystore.properties
@@ -51,12 +52,11 @@ jobs:
         PROD_KEYSTORE_STORE_PASSWORD: ${{ secrets.PROD_KEYSTORE_STORE_PASSWORD }}
       run: |
         mkdir -p app/keystores
-        echo "$PROD_KEYSTORE" | base64 --decode > app/keystores/prod.keystore
-        cat <<EOF > app/keystores/prod-keystore.properties
-        keyAlias=$PROD_KEYSTORE_KEY_ALIAS
-        keyPassword=$PROD_KEYSTORE_KEY_PASSWORD
-        storePassword=$PROD_KEYSTORE_STORE_PASSWORD
-        EOF
+        printf '%s' "$PROD_KEYSTORE" | base64 --decode > app/keystores/prod.keystore
+        file app/keystores/prod.keystore
+        echo "keyAlias=$PROD_KEYSTORE_KEY_ALIAS" > app/keystores/prod-keystore.properties
+        echo "keyPassword=$PROD_KEYSTORE_KEY_PASSWORD" >> app/keystores/prod-keystore.properties
+        echo "storePassword=$PROD_KEYSTORE_STORE_PASSWORD" >> app/keystores/prod-keystore.properties
 
     - name: Inject credentials
       run: |
