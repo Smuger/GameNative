@@ -37,20 +37,23 @@ jobs:
         STEAMGRIDDB_API_KEY=${{ secrets.STEAMGRIDDB_API_KEY }}
         EOF
 
-    - name: Build with Gradle
-      run: ./gradlew :app:bundleRelease
+    - name: Build APK
+      run: ./gradlew :app:assembleRelease
 
-    - name: Extract APK from Bundle
+    - name: Verify APK is signed
       run: |
-        java -jar tools/bundletool-all-1.17.2.jar build-apks --bundle=app/build/outputs/bundle/release/app-release.aab --output=app-release.apks --mode=universal
-        unzip -o app-release.apks universal.apk
+        APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+        echo "APK path: $APK"
+        ls -lh "$APK"
+        $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools/ | tail -1)/apksigner verify --print-certs "$APK"
+        echo "apk_path=$APK" >> "$GITHUB_ENV"
 
     - name: Upload Artifact
       id: upload_app
       uses: actions/upload-artifact@v4
       with:
         name: app-release-signed
-        path: ${{ github.workspace }}/universal.apk
+        path: ${{ env.apk_path }}
 
     - name: Build changelog text
       id: changelog
@@ -75,14 +78,6 @@ jobs:
         name: "Build ${{ steps.tag.outputs.name }}"
         prerelease: true
         body: ${{ steps.changelog.outputs.log }}
-        files: universal.apk
+        files: ${{ env.apk_path }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Post to Discord
-      env:
-        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      run: |
-        artifact_url="https://nightly.link/utkarshdalal/GameNative/actions/runs/${{ github.run_id }}/app-release-signed.zip"
-        payload='{"content":"**New Android build**\nDownload: '"$artifact_url"'\n\nChanges:\n'"${{ steps.changelog.outputs.log }}"'"}'
-        curl -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"
