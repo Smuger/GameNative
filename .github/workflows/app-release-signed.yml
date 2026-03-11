@@ -55,10 +55,29 @@ jobs:
     - name: Build changelog text
       id: changelog
       run: |
-        text=$(jq -r '.commits[] | "• " + (.message | split("\n")[0]) + " (" + .id[0:7] + ")"' "$GITHUB_EVENT_PATH")
+        if jq -e '.commits' "$GITHUB_EVENT_PATH" > /dev/null 2>&1; then
+          text=$(jq -r '.commits[] | "• " + (.message | split("\n")[0]) + " (" + .id[0:7] + ")"' "$GITHUB_EVENT_PATH")
+        else
+          text="• Manual build (workflow_dispatch)"
+        fi
         echo 'log<<EOF' >>"$GITHUB_OUTPUT"
         echo "$text" >>"$GITHUB_OUTPUT"
         echo 'EOF' >>"$GITHUB_OUTPUT"
+
+    - name: Create tag name
+      id: tag
+      run: echo "name=build-$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.tag.outputs.name }}
+        name: "Build ${{ steps.tag.outputs.name }}"
+        prerelease: true
+        body: ${{ steps.changelog.outputs.log }}
+        files: universal.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Post to Discord
       env:
