@@ -101,6 +101,13 @@ public class Keyboard {
         return (sources & InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD;
     }
 
+    public XKeycode lookupXKeycode(int androidKeyCode) {
+        if (androidKeyCode >= 0 && androidKeyCode < keycodeMap.length) {
+            return keycodeMap[androidKeyCode];
+        }
+        return null;
+    }
+
     public boolean onKeyEvent(KeyEvent event) {
         // if (ExternalController.isGameController(event.getDevice())) return false;
 

@@ -71,6 +71,8 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.ui.component.InputDebugLogger
+import app.gamenative.ui.component.InputDebugOverlay
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.data.XServerState
@@ -336,6 +338,7 @@ fun XServerScreen(
     var isOverlayPaused by remember { mutableStateOf(false) }
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
+    var showInputDebug by remember { mutableStateOf(false) }
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
 
@@ -564,6 +567,11 @@ fun XServerScreen(
                 showPhysicalControllerDialog = true
             }
 
+            QuickMenuAction.INPUT_DEBUG -> {
+                InputDebugLogger.isEnabled.value = true
+                showInputDebug = true
+            }
+
             QuickMenuAction.EXIT_GAME -> {
                 PostHog.capture(
                     event = "game_closed",
@@ -638,17 +646,25 @@ fun XServerScreen(
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
             val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
             val isGamepad = ExternalController.isGameController(it.event.device)
-            // logD("onKeyEvent(${it.event.device.sources})\n\tisGamepad: $isGamepad\n\tisKeyboard: $isKeyboard\n\t${it.event}")
+
+            if (InputDebugLogger.isEnabled.value) {
+                val xKeycode = keyboard?.lookupXKeycode(it.event.keyCode)
+                InputDebugLogger.logKeyEvent(
+                    event = it.event,
+                    isKeyboardDevice = isKeyboard,
+                    isGamepadDevice = isGamepad,
+                    xKeycode = xKeycode,
+                    handled = true,
+                )
+            }
 
             if (showQuickMenu && isGamepad) {
-                // Let Compose focus system handle gamepad navigation/selection while menu is visible.
                 false
             } else {
                 var handled = false
                 if (isGamepad) {
                     handled = physicalControllerHandler?.onKeyEvent(it.event) == true
                     if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
-                    // Final fallback to WinHandler passthrough
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onKeyEvent(it.event)
                 }
                 if (!handled && isKeyboard) {
@@ -660,15 +676,26 @@ fun XServerScreen(
         val onMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = {
             val isGamepad = ExternalController.isGameController(it.event?.device)
 
+            if (InputDebugLogger.isEnabled.value && it.event != null) {
+                val evt = it.event!!
+                val isMouseSource = (evt.source and android.view.InputDevice.SOURCE_MOUSE) == android.view.InputDevice.SOURCE_MOUSE
+                if (isMouseSource) {
+                    InputDebugLogger.logMouseEvent(
+                        source = "ExtMouse",
+                        dx = evt.x.toInt(),
+                        dy = evt.y.toInt(),
+                        isRelative = xServerView?.getxServer()?.isRelativeMouseMovement == true,
+                    )
+                }
+            }
+
             if (showQuickMenu && isGamepad) {
-                // Let Compose consume any gamepad motion while menu is visible.
                 false
             } else {
                 var handled = false
                 if (isGamepad && it.event != null) {
                     handled = physicalControllerHandler?.onGenericMotionEvent(it.event!!) == true
                     if (!handled) handled = PluviaApp.inputControlsView?.onGenericMotionEvent(it.event) == true
-                    // Final fallback to WinHandler passthrough
                     if (!handled) handled = xServerView!!.getxServer().winHandler.onGenericMotionEvent(it.event)
                 }
                 if (!handled) {
@@ -688,6 +715,11 @@ fun XServerScreen(
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
         }
+        val inputDebugCallback = Callback<String> { outputLine ->
+            if (outputLine != null) {
+                InputDebugLogger.processWineLogLine(outputLine)
+            }
+        }
 
         PluviaApp.events.on<AndroidEvent.ActivityDestroyed, Unit>(onActivityDestroyed)
         PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(onKeyEvent)
@@ -695,6 +727,7 @@ fun XServerScreen(
         PluviaApp.events.on<AndroidEvent.GuestProgramTerminated, Unit>(onGuestProgramTerminated)
         PluviaApp.events.on<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
         ProcessHelper.addDebugCallback(debugCallback)
+        ProcessHelper.addDebugCallback(inputDebugCallback)
 
         onDispose {
             PluviaApp.events.off<AndroidEvent.ActivityDestroyed, Unit>(onActivityDestroyed)
@@ -703,6 +736,7 @@ fun XServerScreen(
             PluviaApp.events.off<AndroidEvent.GuestProgramTerminated, Unit>(onGuestProgramTerminated)
             PluviaApp.events.off<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
             ProcessHelper.removeDebugCallback(debugCallback)
+            ProcessHelper.removeDebugCallback(inputDebugCallback)
         }
     }
 
@@ -1365,6 +1399,28 @@ fun XServerScreen(
             onDismiss = dismissOverlayMenu,
             onItemSelected = onQuickMenuItemSelected,
             hasPhysicalController = hasPhysicalController,
+        )
+
+        val xServer = xServerView?.getxServer()
+        val currentWineDebug = remember {
+            if (PrefManager.enableWineDebug) {
+                val ch = PrefManager.wineDebugChannels
+                if (ch.isNotEmpty()) "+${ch.replace(",", ",+")}" else "-all"
+            } else "-all"
+        }
+        InputDebugOverlay(
+            isVisible = showInputDebug,
+            onDismiss = {
+                showInputDebug = false
+                InputDebugLogger.isEnabled.value = false
+            },
+            isRelativeMouse = xServer?.isRelativeMouseMovement == true,
+            winHandlerConnected = xServer?.winHandler?.isRunning == true,
+            pointerX = xServer?.pointer?.getX()?.toInt() ?: 0,
+            pointerY = xServer?.pointer?.getY()?.toInt() ?: 0,
+            screenWidth = xServer?.screenInfo?.width?.toInt() ?: 0,
+            screenHeight = xServer?.screenInfo?.height?.toInt() ?: 0,
+            wineDebugChannels = currentWineDebug,
         )
     }
 

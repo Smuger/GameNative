@@ -84,9 +84,12 @@ public class WinHandler {
     private Context activity;
     private final java.util.Set<Integer> ignoredDeviceIds = new java.util.HashSet<>();
 
-    // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
         this.inputControlsView = view;
+    }
+
+    public boolean isRunning() {
+        return running && initReceived;
     }
 
     public enum PreferredInputApi {
