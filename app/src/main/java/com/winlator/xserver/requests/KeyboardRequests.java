@@ -18,18 +18,23 @@ public abstract class KeyboardRequests {
         int count = inputStream.readUnsignedByte();
         inputStream.skip(2);
 
+        int totalKeysyms = count * KEYSYMS_PER_KEYCODE;
+
         try (XStreamLock lock = outputStream.lock()) {
             outputStream.writeByte(RESPONSE_CODE_SUCCESS);
             outputStream.writeByte(KEYSYMS_PER_KEYCODE);
             outputStream.writeShort(client.getSequenceNumber());
-            outputStream.writeInt(count);
+            outputStream.writeInt(totalKeysyms);
             outputStream.writePad(24);
 
-            int i = firstKeycode - Keyboard.MIN_KEYCODE;
-            while (count != 0) {
-                outputStream.writeInt(client.xServer.keyboard.keysyms[i]);
-                count--;
-                i++;
+            int baseIndex = (firstKeycode - Keyboard.MIN_KEYCODE) * KEYSYMS_PER_KEYCODE;
+            for (int i = 0; i < totalKeysyms; i++) {
+                int idx = baseIndex + i;
+                if (idx >= 0 && idx < client.xServer.keyboard.keysyms.length) {
+                    outputStream.writeInt(client.xServer.keyboard.keysyms[idx]);
+                } else {
+                    outputStream.writeInt(0);
+                }
             }
         }
     }
