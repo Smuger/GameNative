@@ -75,6 +75,7 @@ fun InputDebugOverlay(
     val mouseCount by logger.mouseEventCount
     val unmappedCount by logger.unmappedKeyCount
     val wineCount by logger.wineEventCount
+    val x11Count by logger.x11KeyCount
     val detectedLayout by logger.detectedLayout
     val inputPaths = remember(isRelativeMouse, winHandlerConnected) {
         logger.describeInputPaths(isRelativeMouse, winHandlerConnected)
@@ -146,9 +147,9 @@ fun InputDebugOverlay(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     StatBadge("Keys", keyCount.toString(), PluviaTheme.colors.accentCyan)
-                    StatBadge("Mouse", mouseCount.toString(), PluviaTheme.colors.accentPurple)
-                    StatBadge("Unmapped", unmappedCount.toString(), PluviaTheme.colors.accentDanger)
+                    StatBadge("X11", x11Count.toString(), Color(0xFF00E5FF))
                     StatBadge("Wine", wineCount.toString(), PluviaTheme.colors.accentWarning)
+                    StatBadge("Bad", unmappedCount.toString(), PluviaTheme.colors.accentDanger)
                     StatBadge(
                         "Ptr",
                         "$pointerX,$pointerY",
@@ -232,6 +233,53 @@ fun InputDebugOverlay(
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                 Spacer(Modifier.height(8.dp))
+
+                // System acknowledgment log
+                val sysLog = logger.systemLog
+                if (sysLog.isNotEmpty()) {
+                    Text(
+                        text = "SYSTEM TRACE (${sysLog.size})",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                        ),
+                        color = PluviaTheme.colors.accentWarning.copy(alpha = 0.7f),
+                    )
+                    Spacer(Modifier.height(4.dp))
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.White.copy(alpha = 0.03f))
+                            .padding(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
+                    ) {
+                        items(sysLog.size, key = { sysLog[it].hashCode() + it }) { idx ->
+                            val entry = sysLog[idx]
+                            val entryColor = when {
+                                entry.contains("Wine:") -> Color(0xFFFF6B35)
+                                entry.contains("X11 Server:") -> PluviaTheme.colors.accentCyan
+                                entry.contains("Android:") -> PluviaTheme.colors.accentSuccess
+                                else -> Color.White.copy(alpha = 0.5f)
+                            }
+                            Text(
+                                text = entry,
+                                color = entryColor.copy(alpha = 0.8f),
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    Spacer(Modifier.height(8.dp))
+                }
 
                 // Event log header
                 Text(
@@ -378,6 +426,7 @@ private fun EventRow(event: InputDebugLogger.DebugEvent) {
         InputDebugLogger.EventType.MOUSE_BUTTON -> PluviaTheme.colors.accentPurple
         InputDebugLogger.EventType.TOUCH -> PluviaTheme.colors.accentPink
         InputDebugLogger.EventType.GAMEPAD -> PluviaTheme.colors.accentWarning
+        InputDebugLogger.EventType.X11_KEY -> Color(0xFF00E5FF)
         InputDebugLogger.EventType.WINE_KEY -> Color(0xFFFF6B35)
         InputDebugLogger.EventType.WINE_MOUSE -> Color(0xFFFF35A0)
         InputDebugLogger.EventType.WINE_LAYOUT -> Color(0xFF35BFFF)
@@ -415,6 +464,7 @@ private fun EventRow(event: InputDebugLogger.DebugEvent) {
                 InputDebugLogger.EventType.MOUSE_BUTTON -> "BTN"
                 InputDebugLogger.EventType.TOUCH -> "TCH"
                 InputDebugLogger.EventType.GAMEPAD -> "PAD"
+                InputDebugLogger.EventType.X11_KEY -> "X11"
                 InputDebugLogger.EventType.WINE_KEY -> "W:K"
                 InputDebugLogger.EventType.WINE_MOUSE -> "W:M"
                 InputDebugLogger.EventType.WINE_LAYOUT -> "W:L"

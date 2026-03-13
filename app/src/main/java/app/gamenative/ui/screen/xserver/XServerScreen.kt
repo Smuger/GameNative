@@ -342,6 +342,17 @@ fun XServerScreen(
     var hasPhysicalController by remember { mutableStateOf(false) }
     var keepPausedForEditor by remember { mutableStateOf(false) }
 
+    val inputDebugKeyboardListener = remember {
+        object : com.winlator.xserver.Keyboard.OnKeyboardListener {
+            override fun onKeyPress(keycode: Byte, keysym: Int) {
+                InputDebugLogger.logX11KeyPress(keycode, keysym)
+            }
+            override fun onKeyRelease(keycode: Byte) {
+                InputDebugLogger.logX11KeyRelease(keycode)
+            }
+        }
+    }
+
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
         if (exitWatchJob?.isActive == true) return
@@ -570,6 +581,7 @@ fun XServerScreen(
             QuickMenuAction.INPUT_DEBUG -> {
                 InputDebugLogger.isEnabled.value = true
                 showInputDebug = true
+                xServerView?.getxServer()?.keyboard?.addOnKeyboardListener(inputDebugKeyboardListener)
             }
 
             QuickMenuAction.EXIT_GAME -> {
@@ -1413,6 +1425,7 @@ fun XServerScreen(
             onDismiss = {
                 showInputDebug = false
                 InputDebugLogger.isEnabled.value = false
+                xServer?.keyboard?.removeOnKeyboardListener(inputDebugKeyboardListener)
             },
             isRelativeMouse = xServer?.isRelativeMouseMovement == true,
             winHandlerConnected = xServer?.winHandler?.isRunning == true,

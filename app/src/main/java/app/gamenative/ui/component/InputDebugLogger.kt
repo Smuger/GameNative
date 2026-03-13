@@ -23,6 +23,7 @@ object InputDebugLogger {
         MOUSE_BUTTON,
         TOUCH,
         GAMEPAD,
+        X11_KEY,
         WINE_KEY,
         WINE_MOUSE,
         WINE_LAYOUT,
@@ -30,13 +31,16 @@ object InputDebugLogger {
     }
 
     private const val MAX_EVENTS = 300
+    private const val MAX_SYSTEM_LOG = 80
 
     val events = mutableStateListOf<DebugEvent>()
+    val systemLog = mutableStateListOf<String>()
     val isEnabled = mutableStateOf(false)
     val keyboardEventCount = mutableStateOf(0)
     val mouseEventCount = mutableStateOf(0)
     val unmappedKeyCount = mutableStateOf(0)
     val wineEventCount = mutableStateOf(0)
+    val x11KeyCount = mutableStateOf(0)
     val wineDebugStatus = mutableStateOf("unknown")
     val detectedLayout = mutableStateOf<String?>(null)
 
@@ -46,12 +50,55 @@ object InputDebugLogger {
         if (events.size > MAX_EVENTS) events.removeRange(MAX_EVENTS, events.size)
     }
 
+    fun addSystemLog(message: String) {
+        if (!isEnabled.value) return
+        val ts = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US)
+            .format(java.util.Date())
+        systemLog.add(0, "[$ts] $message")
+        if (systemLog.size > MAX_SYSTEM_LOG) systemLog.removeRange(MAX_SYSTEM_LOG, systemLog.size)
+    }
+
     fun clear() {
         events.clear()
+        systemLog.clear()
         keyboardEventCount.value = 0
         mouseEventCount.value = 0
         unmappedKeyCount.value = 0
         wineEventCount.value = 0
+        x11KeyCount.value = 0
+    }
+
+    /**
+     * Called from Keyboard.OnKeyboardListener — fires for ALL key injections
+     * regardless of source (IME, physical keyboard, on-screen controller, touchpad hotkeys).
+     */
+    fun logX11KeyPress(keycode: Byte, keysym: Int) {
+        if (!isEnabled.value) return
+        x11KeyCount.value++
+        keyboardEventCount.value++
+        val xkName = XKeycode.entries.find { it.id == keycode }?.name ?: "unknown($keycode)"
+        val details = "$xkName (keycode=$keycode, keysym=0x${keysym.toString(16)})"
+        addSystemLog("X11 Server: KeyPress $details → sent to focused window via Unix socket")
+        log(DebugEvent(
+            type = EventType.X11_KEY,
+            source = "X11/Press",
+            details = details,
+            mapped = true,
+        ))
+    }
+
+    fun logX11KeyRelease(keycode: Byte) {
+        if (!isEnabled.value) return
+        x11KeyCount.value++
+        val xkName = XKeycode.entries.find { it.id == keycode }?.name ?: "unknown($keycode)"
+        val details = "$xkName (keycode=$keycode)"
+        addSystemLog("X11 Server: KeyRelease $details → sent to focused window via Unix socket")
+        log(DebugEvent(
+            type = EventType.X11_KEY,
+            source = "X11/Release",
+            details = details,
+            mapped = true,
+        ))
     }
 
     fun logKeyEvent(
@@ -85,13 +132,19 @@ object InputDebugLogger {
             if (xKeycode == null) unmappedKeyCount.value++
         }
 
+        val src = when {
+            isGamepadDevice -> "Gamepad"
+            isKeyboardDevice -> "Keyboard"
+            else -> "Unknown"
+        }
+
+        addSystemLog("Android: $src ${KeyEvent.keyCodeToString(event.keyCode)} $action" +
+            " → mapped to ${xKeycode?.name ?: "UNMAPPED"}" +
+            " → Keyboard.onKeyEvent()")
+
         log(DebugEvent(
             type = type,
-            source = when {
-                isGamepadDevice -> "Gamepad"
-                isKeyboardDevice -> "Keyboard"
-                else -> "Unknown"
-            },
+            source = src,
             details = details,
             mapped = xKeycode != null,
         ))
@@ -147,17 +200,62 @@ object InputDebugLogger {
      * traces and logs them. Standard Wine debug format:
      *   THREADID:LEVEL:CHANNEL:Function message
      * e.g. "00d0:trace:keyboard:X11DRV_InitKeyboard keycode 24 => vkey 0051"
+     *   or: "00e4:trace:event:call_event_handler 118 KeyPress for hwnd/window 0x10086/2800001"
      */
     fun processWineLogLine(line: String) {
         if (!isEnabled.value) return
 
-        // Match keyboard key event traces
         when {
+            // X11 event handler: KeyPress/KeyRelease received by Wine
+            line.contains("call_event_handler") && line.contains("KeyPress") -> {
+                wineEventCount.value++
+                val short = extractAfterFunction(line)
+                addSystemLog("Wine: X11 KeyPress received → $short")
+                log(DebugEvent(
+                    type = EventType.WINE_KEY,
+                    source = "Wine/X11",
+                    details = "KeyPress $short",
+                    mapped = true,
+                ))
+            }
+
+            line.contains("call_event_handler") && line.contains("KeyRelease") -> {
+                wineEventCount.value++
+                val short = extractAfterFunction(line)
+                log(DebugEvent(
+                    type = EventType.WINE_KEY,
+                    source = "Wine/X11",
+                    details = "KeyRelease $short",
+                    mapped = true,
+                ))
+            }
+
+            // Wine keyboard processing: vkey mapping and unicode translation
+            line.contains("NtUserToUnicodeEx") -> {
+                wineEventCount.value++
+                val short = extractAfterFunction(line)
+                val vkeyMatch = Regex("virt (0x[0-9a-fA-F]+)").find(line)
+                val scanMatch = Regex("scan (0x[0-9a-fA-F]+)").find(line)
+                val vkey = vkeyMatch?.groupValues?.get(1) ?: "?"
+                val scan = scanMatch?.groupValues?.get(1) ?: "?"
+                addSystemLog("Wine: NtUserToUnicodeEx vkey=$vkey scan=$scan → game received key")
+                log(DebugEvent(
+                    type = EventType.WINE_KEY,
+                    source = "Wine/Win32",
+                    details = "ToUnicode vkey=$vkey scan=$scan",
+                    mapped = true,
+                ))
+            }
+
+            // Wine keyboard key event processing
             line.contains("keyboard:X11DRV_KeyEvent") || line.contains("GN_KEY_DEBUG") -> {
                 wineEventCount.value++
                 val isDeliver = line.contains("DELIVERING")
                 val type = if (isDeliver) EventType.WINE_KEY else EventType.WINE_INFO
                 val short = extractAfterFunction(line)
+                if (isDeliver) {
+                    addSystemLog("Wine: X11DRV_KeyEvent DELIVERING → $short")
+                }
                 log(DebugEvent(
                     type = type,
                     source = "Wine/Key",
@@ -177,6 +275,19 @@ object InputDebugLogger {
                 ))
             }
 
+            // MapVirtualKeyEx — shows vkey ↔ scancode resolution
+            line.contains("X11DRV_MapVirtualKeyEx") && line.contains("returning") -> {
+                wineEventCount.value++
+                val short = extractAfterFunction(line)
+                log(DebugEvent(
+                    type = EventType.WINE_KEY,
+                    source = "Wine/Map",
+                    details = short,
+                    mapped = !line.contains("returning 0x0."),
+                ))
+            }
+
+            // Layout detection
             line.contains("keyboard:X11DRV_InitKeyboard") && line.contains("vkey") -> {
                 wineEventCount.value++
                 val short = extractAfterFunction(line)
@@ -203,6 +314,7 @@ object InputDebugLogger {
                 wineEventCount.value++
                 val layoutMatch = Regex("\"(.+?)\"").find(line)
                 detectedLayout.value = layoutMatch?.groupValues?.get(1)
+                addSystemLog("Wine: Keyboard layout detected: ${detectedLayout.value}")
                 log(DebugEvent(
                     type = EventType.WINE_LAYOUT,
                     source = "Wine/Layout",
@@ -211,46 +323,51 @@ object InputDebugLogger {
                 ))
             }
 
-            // Mouse/cursor traces
-            line.contains("cursor:") || (line.contains("mouse:") && line.contains("trace:")) -> {
+            // Mouse events from Wine X11 event handler
+            line.contains("call_event_handler") && line.contains("MotionNotify") -> {
                 wineEventCount.value++
                 val short = extractAfterFunction(line)
                 log(DebugEvent(
                     type = EventType.WINE_MOUSE,
-                    source = "Wine/Mouse",
+                    source = "Wine/X11",
+                    details = "MotionNotify $short",
+                    mapped = true,
+                ))
+            }
+
+            line.contains("call_event_handler") && (
+                line.contains("ButtonPress") || line.contains("ButtonRelease")) -> {
+                wineEventCount.value++
+                val short = extractAfterFunction(line)
+                val evType = if (line.contains("ButtonPress")) "ButtonPress" else "ButtonRelease"
+                addSystemLog("Wine: X11 $evType → $short")
+                log(DebugEvent(
+                    type = EventType.WINE_MOUSE,
+                    source = "Wine/X11",
+                    details = "$evType $short",
+                    mapped = true,
+                ))
+            }
+
+            // Cursor/clipping traces
+            line.contains("grab_clipping") || line.contains("clipping to") ||
+                line.contains("no longer clipping") || line.contains("needs_relative") -> {
+                wineEventCount.value++
+                val short = extractAfterFunction(line)
+                addSystemLog("Wine: Mouse clipping → $short")
+                log(DebugEvent(
+                    type = EventType.WINE_MOUSE,
+                    source = "Wine/Clip",
                     details = short,
                     mapped = true,
                 ))
             }
 
-            line.contains("MotionNotify") || line.contains("grab_clipping") ||
-                line.contains("needs_relative") || line.contains("clipping to") ||
-                line.contains("no longer clipping") -> {
-                wineEventCount.value++
-                val short = extractAfterFunction(line)
-                log(DebugEvent(
-                    type = EventType.WINE_MOUSE,
-                    source = "Wine/Mouse",
-                    details = short,
-                    mapped = true,
-                ))
-            }
-
-            line.contains("ButtonPress") || line.contains("ButtonRelease") -> {
-                wineEventCount.value++
-                val short = extractAfterFunction(line)
-                log(DebugEvent(
-                    type = EventType.WINE_MOUSE,
-                    source = "Wine/Mouse",
-                    details = short,
-                    mapped = true,
-                ))
-            }
-
-            // XInput2 traces (relevant for understanding mouse path)
+            // XInput2 traces
             line.contains("xinput2") || line.contains("XInput2") -> {
                 wineEventCount.value++
                 val short = extractAfterFunction(line)
+                addSystemLog("Wine: XInput2 → $short")
                 log(DebugEvent(
                     type = EventType.WINE_INFO,
                     source = "Wine/XI2",
