@@ -729,11 +729,6 @@ fun XServerScreen(
         val debugCallback = Callback<String> { outputLine ->
             Timber.i(outputLine ?: "")
         }
-        val inputDebugCallback = Callback<String> { outputLine ->
-            if (outputLine != null) {
-                InputDebugLogger.processWineLogLine(outputLine)
-            }
-        }
 
         PluviaApp.events.on<AndroidEvent.ActivityDestroyed, Unit>(onActivityDestroyed)
         PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(onKeyEvent)
@@ -741,7 +736,6 @@ fun XServerScreen(
         PluviaApp.events.on<AndroidEvent.GuestProgramTerminated, Unit>(onGuestProgramTerminated)
         PluviaApp.events.on<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
         ProcessHelper.addDebugCallback(debugCallback)
-        ProcessHelper.addDebugCallback(inputDebugCallback)
 
         onDispose {
             PluviaApp.events.off<AndroidEvent.ActivityDestroyed, Unit>(onActivityDestroyed)
@@ -750,7 +744,6 @@ fun XServerScreen(
             PluviaApp.events.off<AndroidEvent.GuestProgramTerminated, Unit>(onGuestProgramTerminated)
             PluviaApp.events.off<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
             ProcessHelper.removeDebugCallback(debugCallback)
-            ProcessHelper.removeDebugCallback(inputDebugCallback)
             if (InputDebugLogger.isEnabled.value) {
                 xServerView?.getxServer()?.keyboard?.removeOnKeyboardListener(inputDebugKeyboardListener)
                 InputDebugLogger.isEnabled.value = false
@@ -1996,6 +1989,7 @@ private fun setupXEnvironment(
         if (captureLogs) {
             logFile?.appendText(line + "\n")
         }
+        InputDebugLogger.processWineLogLine(line)
     }
 
     val rootPath = imageFs.getRootDir().getPath()
