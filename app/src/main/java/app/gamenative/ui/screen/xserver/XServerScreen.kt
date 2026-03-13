@@ -579,9 +579,11 @@ fun XServerScreen(
             }
 
             QuickMenuAction.INPUT_DEBUG -> {
-                InputDebugLogger.isEnabled.value = true
+                if (!InputDebugLogger.isEnabled.value) {
+                    InputDebugLogger.isEnabled.value = true
+                    xServerView?.getxServer()?.keyboard?.addOnKeyboardListener(inputDebugKeyboardListener)
+                }
                 showInputDebug = true
-                xServerView?.getxServer()?.keyboard?.addOnKeyboardListener(inputDebugKeyboardListener)
             }
 
             QuickMenuAction.EXIT_GAME -> {
@@ -749,6 +751,10 @@ fun XServerScreen(
             PluviaApp.events.off<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
             ProcessHelper.removeDebugCallback(debugCallback)
             ProcessHelper.removeDebugCallback(inputDebugCallback)
+            if (InputDebugLogger.isEnabled.value) {
+                xServerView?.getxServer()?.keyboard?.removeOnKeyboardListener(inputDebugKeyboardListener)
+                InputDebugLogger.isEnabled.value = false
+            }
         }
     }
 
@@ -1424,8 +1430,6 @@ fun XServerScreen(
             isVisible = showInputDebug,
             onDismiss = {
                 showInputDebug = false
-                InputDebugLogger.isEnabled.value = false
-                xServer?.keyboard?.removeOnKeyboardListener(inputDebugKeyboardListener)
             },
             isRelativeMouse = xServer?.isRelativeMouseMovement == true,
             winHandlerConnected = xServer?.winHandler?.isRunning == true,

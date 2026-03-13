@@ -6,14 +6,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,19 +28,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Mouse
-import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +55,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Non-blocking debug HUD. Sits at the bottom of the screen and does NOT
+ * consume touch events in the game area above it. The game keeps running
+ * and receiving input while this is visible.
+ */
 @Composable
 fun InputDebugOverlay(
     isVisible: Boolean,
@@ -77,10 +81,8 @@ fun InputDebugOverlay(
     val wineCount by logger.wineEventCount
     val x11Count by logger.x11KeyCount
     val detectedLayout by logger.detectedLayout
-    val inputPaths = remember(isRelativeMouse, winHandlerConnected) {
-        logger.describeInputPaths(isRelativeMouse, winHandlerConnected)
-    }
     val wineDebugActive = wineDebugChannels != "-all" && wineDebugChannels.isNotEmpty()
+    var expanded by remember { mutableStateOf(false) }
 
     AnimatedVisibility(
         visible = isVisible,
@@ -88,15 +90,21 @@ fun InputDebugOverlay(
         exit = fadeOut() + slideOutVertically { it },
         modifier = modifier.fillMaxSize(),
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = Color.Black.copy(alpha = 0.92f),
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // The panel anchored to the bottom — only this part blocks touches
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .then(
+                        if (expanded) Modifier.fillMaxHeight(0.55f)
+                        else Modifier
+                    )
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                    .background(Color.Black.copy(alpha = 0.88f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
+                // Header row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -104,216 +112,164 @@ fun InputDebugOverlay(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.BugReport,
+                            Icons.Default.BugReport,
                             contentDescription = null,
                             tint = PluviaTheme.colors.accentCyan,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(18.dp),
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            text = "Input Debug",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                            ),
+                            "Input Debug",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
                             color = PluviaTheme.colors.accentCyan,
                         )
                     }
-                    Row {
-                        TextButton(onClick = { logger.clear() }) {
-                            Icon(
-                                Icons.Default.Clear,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = PluviaTheme.colors.accentWarning,
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text("Clear", color = PluviaTheme.colors.accentWarning, fontSize = 12.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { logger.clear() }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Clear, null, Modifier.size(14.dp), tint = PluviaTheme.colors.accentWarning)
                         }
-                        IconButton(onClick = onDismiss) {
+                        IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(28.dp)) {
                             Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = Color.White.copy(alpha = 0.7f),
+                                if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                null, Modifier.size(16.dp), tint = Color.White.copy(alpha = 0.6f),
                             )
+                        }
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, null, Modifier.size(14.dp), tint = Color.White.copy(alpha = 0.5f))
                         }
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
-                // Stats row
+                // Stats row — always visible
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     StatBadge("Keys", keyCount.toString(), PluviaTheme.colors.accentCyan)
                     StatBadge("X11", x11Count.toString(), Color(0xFF00E5FF))
                     StatBadge("Wine", wineCount.toString(), PluviaTheme.colors.accentWarning)
                     StatBadge("Bad", unmappedCount.toString(), PluviaTheme.colors.accentDanger)
-                    StatBadge(
-                        "Ptr",
-                        "$pointerX,$pointerY",
-                        PluviaTheme.colors.accentSuccess,
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Current mouse/screen info
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    InfoChip(
-                        label = "Mouse",
-                        value = if (isRelativeMouse) "RELATIVE" else "ABSOLUTE",
-                        color = if (isRelativeMouse) PluviaTheme.colors.accentWarning else PluviaTheme.colors.accentSuccess,
-                    )
-                    InfoChip(
-                        label = "Screen",
-                        value = "${screenWidth}x${screenHeight}",
-                        color = Color.White.copy(alpha = 0.6f),
-                    )
-                    InfoChip(
-                        label = "WinHandler",
-                        value = if (winHandlerConnected) "OK" else "WAIT",
-                        color = if (winHandlerConnected) PluviaTheme.colors.accentSuccess else PluviaTheme.colors.accentDanger,
-                    )
+                    StatBadge("Ptr", "$pointerX,$pointerY", PluviaTheme.colors.accentSuccess)
                 }
 
                 Spacer(Modifier.height(4.dp))
 
-                // Wine debug status
+                // Info chips row — always visible
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     InfoChip(
-                        label = "WINEDEBUG",
-                        value = if (wineDebugActive) wineDebugChannels.take(40) else "DISABLED",
-                        color = if (wineDebugActive) PluviaTheme.colors.accentSuccess else PluviaTheme.colors.accentDanger,
+                        "Mouse",
+                        if (isRelativeMouse) "REL" else "ABS",
+                        if (isRelativeMouse) PluviaTheme.colors.accentWarning else PluviaTheme.colors.accentSuccess,
+                    )
+                    InfoChip(
+                        "Scr",
+                        "${screenWidth}x${screenHeight}",
+                        Color.White.copy(alpha = 0.5f),
+                    )
+                    InfoChip(
+                        "WH",
+                        if (winHandlerConnected) "OK" else "WAIT",
+                        if (winHandlerConnected) PluviaTheme.colors.accentSuccess else PluviaTheme.colors.accentDanger,
+                    )
+                    InfoChip(
+                        "WineDbg",
+                        if (wineDebugActive) "ON" else "OFF",
+                        if (wineDebugActive) PluviaTheme.colors.accentSuccess else PluviaTheme.colors.accentDanger,
                     )
                     if (detectedLayout != null) {
-                        InfoChip(
-                            label = "Layout",
-                            value = detectedLayout!!,
-                            color = PluviaTheme.colors.accentCyan,
-                        )
+                        InfoChip("Layout", detectedLayout!!, PluviaTheme.colors.accentCyan)
                     }
                 }
 
-                if (!wineDebugActive) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "Wine-side logging disabled. Enable in Settings > Debug > Wine Logs with channels: keyboard,key,cursor,event. Requires game restart.",
-                        color = PluviaTheme.colors.accentDanger.copy(alpha = 0.7f),
-                        fontSize = 9.sp,
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                    )
-                }
+                // Expanded content
+                if (expanded) {
+                    Spacer(Modifier.height(6.dp))
 
-                Spacer(Modifier.height(12.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-                Spacer(Modifier.height(8.dp))
-
-                // Input paths
-                Text(
-                    text = "INPUT PATHS",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
-                    ),
-                    color = Color.White.copy(alpha = 0.5f),
-                )
-                Spacer(Modifier.height(6.dp))
-                inputPaths.forEach { path ->
-                    InputPathRow(path)
-                }
-
-                Spacer(Modifier.height(12.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-                Spacer(Modifier.height(8.dp))
-
-                // System acknowledgment log
-                val sysLog = logger.systemLog
-                if (sysLog.isNotEmpty()) {
-                    Text(
-                        text = "SYSTEM TRACE (${sysLog.size})",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                        ),
-                        color = PluviaTheme.colors.accentWarning.copy(alpha = 0.7f),
-                    )
-                    Spacer(Modifier.height(4.dp))
-
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.03f))
-                            .padding(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(1.dp),
-                    ) {
-                        items(sysLog.size, key = { sysLog[it].hashCode() + it }) { idx ->
-                            val entry = sysLog[idx]
-                            val entryColor = when {
-                                entry.contains("Wine:") -> Color(0xFFFF6B35)
-                                entry.contains("X11 Server:") -> PluviaTheme.colors.accentCyan
-                                entry.contains("Android:") -> PluviaTheme.colors.accentSuccess
-                                else -> Color.White.copy(alpha = 0.5f)
-                            }
-                            Text(
-                                text = entry,
-                                color = entryColor.copy(alpha = 0.8f),
-                                fontSize = 9.sp,
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(8.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-                    Spacer(Modifier.height(8.dp))
-                }
-
-                // Event log header
-                Text(
-                    text = "EVENT LOG (${events.size})",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
-                    ),
-                    color = Color.White.copy(alpha = 0.5f),
-                )
-                Spacer(Modifier.height(6.dp))
-
-                if (events.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    if (!wineDebugActive) {
                         Text(
-                            text = "Press keys or move mouse to see events...",
-                            color = Color.White.copy(alpha = 0.3f),
-                            fontSize = 14.sp,
+                            "Wine logging OFF. Enable: Settings > Debug > Wine Logs (keyboard,key,cursor,event). Restart game.",
+                            color = PluviaTheme.colors.accentDanger.copy(alpha = 0.7f),
+                            fontSize = 8.sp,
                         )
+                        Spacer(Modifier.height(4.dp))
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        items(events, key = { it.timestamp }) { event ->
-                            EventRow(event)
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    Spacer(Modifier.height(4.dp))
+
+                    // System trace log
+                    val sysLog = logger.systemLog
+                    if (sysLog.isNotEmpty()) {
+                        Text(
+                            "SYSTEM TRACE (${sysLog.size})",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = PluviaTheme.colors.accentWarning.copy(alpha = 0.6f),
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(0.4f)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color.White.copy(alpha = 0.02f))
+                                .padding(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(1.dp),
+                        ) {
+                            items(sysLog.size, key = { sysLog[it].hashCode() + it }) { idx ->
+                                val entry = sysLog[idx]
+                                val c = when {
+                                    entry.contains("Wine:") -> Color(0xFFFF6B35)
+                                    entry.contains("X11 Server:") -> PluviaTheme.colors.accentCyan
+                                    entry.contains("Android:") -> PluviaTheme.colors.accentSuccess
+                                    else -> Color.White.copy(alpha = 0.4f)
+                                }
+                                Text(
+                                    entry, color = c.copy(alpha = 0.8f),
+                                    fontSize = 8.sp, fontFamily = FontFamily.Monospace,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                        Spacer(Modifier.height(4.dp))
+                    }
+
+                    // Event log
+                    Text(
+                        "EVENT LOG (${events.size})",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        color = Color.White.copy(alpha = 0.4f),
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    if (events.isEmpty()) {
+                        Text(
+                            "Play the game — events appear here live...",
+                            color = Color.White.copy(alpha = 0.2f),
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(0.6f),
+                            verticalArrangement = Arrangement.spacedBy(1.dp),
+                        ) {
+                            items(events, key = { it.timestamp }) { event ->
+                                EventRow(event)
+                            }
                         }
                     }
                 }
@@ -326,23 +282,13 @@ fun InputDebugOverlay(
 private fun StatBadge(label: String, value: String, color: Color) {
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(color.copy(alpha = 0.1f))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = value,
-            color = color,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            fontFamily = FontFamily.Monospace,
-        )
-        Text(
-            text = label,
-            color = color.copy(alpha = 0.7f),
-            fontSize = 10.sp,
-        )
+        Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        Text(label, color = color.copy(alpha = 0.6f), fontSize = 8.sp)
     }
 }
 
@@ -350,68 +296,14 @@ private fun StatBadge(label: String, value: String, color: Color) {
 private fun InfoChip(label: String, value: String, color: Color) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(
-            text = label,
-            color = Color.White.copy(alpha = 0.4f),
-            fontSize = 10.sp,
-        )
-        Text(
-            text = value,
-            color = color,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-        )
-    }
-}
-
-@Composable
-private fun InputPathRow(path: InputDebugLogger.InputPathInfo) {
-    val statusColor = if (path.active) PluviaTheme.colors.accentSuccess else Color.White.copy(alpha = 0.2f)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(statusColor),
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = path.name,
-                    color = if (path.active) Color.White else Color.White.copy(alpha = 0.3f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "[${path.protocol}]",
-                    color = PluviaTheme.colors.accentPurple.copy(alpha = if (path.active) 0.8f else 0.3f),
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
-            Text(
-                text = path.path,
-                color = Color.White.copy(alpha = if (path.active) 0.4f else 0.15f),
-                fontSize = 9.sp,
-                fontFamily = FontFamily.Monospace,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-            )
-        }
+        Text(label, color = Color.White.copy(alpha = 0.3f), fontSize = 8.sp)
+        Text(value, color = color, fontSize = 9.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
     }
 }
 
@@ -432,32 +324,23 @@ private fun EventRow(event: InputDebugLogger.DebugEvent) {
         InputDebugLogger.EventType.WINE_LAYOUT -> Color(0xFF35BFFF)
         InputDebugLogger.EventType.WINE_INFO -> Color(0xFF8888AA)
     }
-
     val mappedColor = if (event.mapped) PluviaTheme.colors.accentSuccess else PluviaTheme.colors.accentDanger
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .background(
-                if (!event.mapped) PluviaTheme.colors.accentDanger.copy(alpha = 0.05f)
-                else Color.Transparent,
-            )
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .clip(RoundedCornerShape(3.dp))
+            .background(if (!event.mapped) PluviaTheme.colors.accentDanger.copy(alpha = 0.04f) else Color.Transparent)
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        // Timestamp
         Text(
-            text = timeFormat.format(Date(event.timestamp)),
-            color = Color.White.copy(alpha = 0.25f),
-            fontSize = 9.sp,
-            fontFamily = FontFamily.Monospace,
+            timeFormat.format(Date(event.timestamp)),
+            color = Color.White.copy(alpha = 0.2f), fontSize = 8.sp, fontFamily = FontFamily.Monospace,
         )
-
-        // Type badge
         Text(
-            text = when (event.type) {
+            when (event.type) {
                 InputDebugLogger.EventType.KEY_DOWN -> "KEY↓"
                 InputDebugLogger.EventType.KEY_UP -> "KEY↑"
                 InputDebugLogger.EventType.MOUSE_MOVE -> "MOV"
@@ -470,43 +353,19 @@ private fun EventRow(event: InputDebugLogger.DebugEvent) {
                 InputDebugLogger.EventType.WINE_LAYOUT -> "W:L"
                 InputDebugLogger.EventType.WINE_INFO -> "W:I"
             },
-            color = typeColor,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
+            color = typeColor, fontSize = 8.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace,
             modifier = Modifier
-                .clip(RoundedCornerShape(3.dp))
+                .clip(RoundedCornerShape(2.dp))
                 .background(typeColor.copy(alpha = 0.1f))
-                .padding(horizontal = 4.dp, vertical = 1.dp),
+                .padding(horizontal = 3.dp, vertical = 1.dp),
         )
-
-        // Source
+        Text(event.source, color = Color.White.copy(alpha = 0.35f), fontSize = 8.sp, fontFamily = FontFamily.Monospace)
+        Box(Modifier.size(4.dp).clip(CircleShape).background(mappedColor))
         Text(
-            text = event.source,
-            color = Color.White.copy(alpha = 0.4f),
-            fontSize = 9.sp,
-            fontFamily = FontFamily.Monospace,
-        )
-
-        // Mapped indicator
-        Box(
-            modifier = Modifier
-                .size(5.dp)
-                .clip(CircleShape)
-                .background(mappedColor),
-        )
-
-        // Details
-        Text(
-            text = event.details,
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 10.sp,
-            fontFamily = FontFamily.Monospace,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .horizontalScroll(rememberScrollState()),
+            event.details, color = Color.White.copy(alpha = 0.65f),
+            fontSize = 8.sp, fontFamily = FontFamily.Monospace,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
         )
     }
 }
