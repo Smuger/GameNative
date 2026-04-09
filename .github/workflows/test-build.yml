@@ -45,6 +45,11 @@ jobs:
           CLOUD_PROJECT_NUMBER=0
           EOF
 
+      - name: Set test app identity (side-by-side install)
+        run: |
+          sed -i 's/applicationId = "app.gamenative"/applicationId = "app.gamenative.test"/' app/build.gradle.kts
+          sed -i 's/app_name">GameNative/app_name">GN Test/' app/src/main/res/values/strings.xml 2>/dev/null || true
+
       - name: Install Android SDK Build Tools
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
