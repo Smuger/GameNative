@@ -178,8 +178,17 @@ public class PresentExtension implements Extension {
         }
     }
 
-    private static void notifyMsc(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void notifyMsc(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        int windowId = inputStream.readInt();
+        int serial = inputStream.readInt();
         inputStream.skip(client.getRemainingRequestLength());
+
+        Window window = client.xServer.windowManager.getWindow(windowId);
+        if (window == null) throw new BadWindow(windowId);
+
+        long ust = System.nanoTime() / 1000;
+        long msc = ust / FAKE_INTERVAL;
+        sendCompleteNotify(window, serial, Kind.MSC_NOTIFY, Mode.COPY, ust, msc);
     }
 
     private static void queryCapabilities(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
@@ -210,7 +219,9 @@ public class PresentExtension implements Extension {
                 }
                 break;
             case ClientOpcodes.NOTIFY_MSC:
-                notifyMsc(client, inputStream, outputStream);
+                try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                    notifyMsc(client, inputStream, outputStream);
+                }
                 break;
             case ClientOpcodes.SELECT_INPUT:
                 try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
