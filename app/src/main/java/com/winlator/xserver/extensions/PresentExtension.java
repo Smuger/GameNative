@@ -40,7 +40,9 @@ public class PresentExtension implements Extension {
     private static abstract class ClientOpcodes {
         private static final byte QUERY_VERSION = 0;
         private static final byte PRESENT_PIXMAP = 1;
+        private static final byte NOTIFY_MSC = 2;
         private static final byte SELECT_INPUT = 3;
+        private static final byte QUERY_CAPABILITIES = 4;
     }
 
     private static class Event {
@@ -176,6 +178,23 @@ public class PresentExtension implements Extension {
         }
     }
 
+    private static void notifyMsc(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        inputStream.skip(client.getRemainingRequestLength());
+    }
+
+    private static void queryCapabilities(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        inputStream.skip(4);
+
+        try (XStreamLock lock = outputStream.lock()) {
+            outputStream.writeByte(RESPONSE_CODE_SUCCESS);
+            outputStream.writeByte((byte)0);
+            outputStream.writeShort(client.getSequenceNumber());
+            outputStream.writeInt(0);
+            outputStream.writeInt(0); // capabilities = 0 (no async flip support)
+            outputStream.writePad(20);
+        }
+    }
+
     @Override
     public void handleRequest(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int opcode = client.getRequestData();
@@ -190,10 +209,16 @@ public class PresentExtension implements Extension {
                     presentPixmap(client, inputStream, outputStream);
                 }
                 break;
+            case ClientOpcodes.NOTIFY_MSC:
+                notifyMsc(client, inputStream, outputStream);
+                break;
             case ClientOpcodes.SELECT_INPUT:
                 try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
                     selectInput(client, inputStream, outputStream);
                 }
+                break;
+            case ClientOpcodes.QUERY_CAPABILITIES:
+                queryCapabilities(client, inputStream, outputStream);
                 break;
             default:
                 throw new BadImplementation();
