@@ -55,6 +55,7 @@ public class XServer {
         drawableManager = new DrawableManager(this);
         cursorManager = new CursorManager(drawableManager);
         windowManager = new WindowManager(screenInfo, drawableManager);
+        windowManager.setXServer(this);
         selectionManager = new SelectionManager(windowManager);
         inputDeviceManager = new InputDeviceManager(this);
         grabManager = new GrabManager(this);

@@ -24,6 +24,7 @@ import com.winlator.xserver.errors.BadPixmap;
 import com.winlator.xserver.errors.BadWindow;
 import com.winlator.xserver.errors.XRequestError;
 import com.winlator.xserver.events.PresentCompleteNotify;
+import com.winlator.xserver.events.PresentConfigureNotify;
 import com.winlator.xserver.events.PresentIdleNotify;
 
 import java.io.IOException;
@@ -80,6 +81,17 @@ public class PresentExtension implements Extension {
                 Event event = events.valueAt(i);
                 if (event.window == window && event.mask.isSet(PresentIdleNotify.getEventMask())) {
                     event.client.sendEvent(new PresentIdleNotify(event.id, window, pixmap, serial, idleFence));
+                }
+            }
+        }
+    }
+
+    public void sendConfigureNotify(Window window, int x, int y, int width, int height) {
+        synchronized (events) {
+            for (int i = 0; i < events.size(); i++) {
+                Event event = events.valueAt(i);
+                if (event.window == window && event.mask.isSet(PresentConfigureNotify.getEventMask())) {
+                    event.client.sendEvent(new PresentConfigureNotify(event.id, window, x, y, width, height));
                 }
             }
         }

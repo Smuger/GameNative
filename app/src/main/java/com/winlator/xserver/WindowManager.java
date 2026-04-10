@@ -15,6 +15,7 @@ import com.winlator.xserver.events.MapNotify;
 import com.winlator.xserver.events.MapRequest;
 import com.winlator.xserver.events.ResizeRequest;
 import com.winlator.xserver.events.UnmapNotify;
+import com.winlator.xserver.extensions.PresentExtension;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,7 @@ public class WindowManager extends XResourceManager {
     private Window focusedWindow;
     private FocusRevertTo focusRevertTo = FocusRevertTo.NONE;
     private final ArrayList<OnWindowModificationListener> onWindowModificationListeners = new ArrayList<>();
+    private XServer xServer;
 
     public interface OnWindowModificationListener {
         default void onMapWindow(Window window) {}
@@ -42,6 +44,10 @@ public class WindowManager extends XResourceManager {
         default void onUpdateWindowAttributes(Window window, Bitmask mask) {}
 
         default void onModifyWindowProperty(Window window, Property property) {}
+    }
+
+    public void setXServer(XServer xServer) {
+        this.xServer = xServer;
     }
 
     public WindowManager(ScreenInfo screenInfo, DrawableManager drawableManager) {
@@ -213,6 +219,13 @@ public class WindowManager extends XResourceManager {
 
         if (resized && window.isInputOutput() && window.attributes.isMapped()) {
             window.sendEvent(new Expose(window));
+        }
+
+        if (resized && xServer != null) {
+            PresentExtension presentExtension = xServer.getExtension(PresentExtension.MAJOR_OPCODE);
+            if (presentExtension != null) {
+                presentExtension.sendConfigureNotify(window, x, y, width, height);
+            }
         }
     }
 
